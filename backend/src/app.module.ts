@@ -37,9 +37,9 @@ import { Attendance, VerificationAttempt, PendingVerification } from './modules/
         password: configService.get('database.password'),
         database: configService.get('database.database'),
         entities: [AdminUser, AuditLog, SontaHead, Meeting, QrCode, Attendance, VerificationAttempt, PendingVerification],
-        synchronize: false, // Disabled - use migrations instead
+        synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true', // Enable via env var for initial setup
         migrations: ['dist/database/migrations/*.js'],
-        migrationsRun: false, // Migrations should be run manually
+        migrationsRun: process.env.TYPEORM_MIGRATIONS_RUN === 'true', // Run migrations on startup if enabled
         logging: process.env.NODE_ENV === 'development',
       }),
       inject: [ConfigService],
