@@ -14,7 +14,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { LoginDto, ChangePasswordDto } from './dto';
+import { MagicLinkRequestDto, MagicLinkVerifyDto } from './dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -25,13 +25,22 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
-  @Post('login')
+  @Post('magic-link/request')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Admin login' })
-  @ApiResponse({ status: 200, description: 'Login successful' })
-  @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  @ApiOperation({ summary: 'Request magic link for login' })
+  @ApiResponse({ status: 200, description: 'Magic link sent if email exists' })
+  requestMagicLink(@Body() dto: MagicLinkRequestDto) {
+    return this.authService.requestMagicLink(dto);
+  }
+
+  @Public()
+  @Post('magic-link/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify magic link and get tokens' })
+  @ApiResponse({ status: 200, description: 'Login successful, tokens returned' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired magic link' })
+  verifyMagicLink(@Body() dto: MagicLinkVerifyDto) {
+    return this.authService.verifyMagicLink(dto);
   }
 
   @Public()
@@ -51,20 +60,6 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'User profile' })
   getProfile(@CurrentUser('id') userId: string) {
     return this.authService.getProfile(userId);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Post('change-password')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Change password' })
-  @ApiResponse({ status: 204, description: 'Password changed successfully' })
-  @ApiResponse({ status: 400, description: 'Current password is incorrect' })
-  changePassword(
-    @CurrentUser('id') userId: string,
-    @Body() changePasswordDto: ChangePasswordDto,
-  ) {
-    return this.authService.changePassword(userId, changePasswordDto);
   }
 
   @UseGuards(JwtAuthGuard)

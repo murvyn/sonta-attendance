@@ -95,7 +95,7 @@ export function Header({ onMenuClick }: HeaderProps) {
 
               {/* User Name (hidden on mobile) */}
               <span className="hidden md:inline-block text-sm font-semibold">
-                {user?.fullName?.split(' ')[0] || user?.username}
+                {user?.fullName?.split(' ')[0] || user?.email?.split('@')[0]}
               </span>
             </Button>
           </DropdownMenuTrigger>
@@ -116,7 +116,7 @@ export function Header({ onMenuClick }: HeaderProps) {
                   </Avatar>
                   <div className="flex flex-col flex-1 min-w-0">
                     <p className="text-sm font-bold leading-tight truncate">
-                      {user?.fullName || user?.username}
+                      {user?.fullName || user?.email}
                     </p>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">
                       {user?.email}

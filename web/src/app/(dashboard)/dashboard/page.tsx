@@ -105,7 +105,7 @@ export default function DashboardPage() {
       {/* Welcome Header with Gradient Text */}
       <div className="space-y-2">
         <h1 className="text-4xl font-black tracking-tight bg-gradient-hero bg-clip-text text-transparent">
-          {getGreeting()}, {user?.fullName?.split(' ')[0] || user?.username}!
+          {getGreeting()}, {user?.fullName?.split(' ')[0] || user?.email?.split('@')[0]}!
         </h1>
         <p className="text-lg text-muted-foreground font-medium">
           Here's what's happening with your attendance system today.

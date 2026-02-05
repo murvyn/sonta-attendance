@@ -1,9 +1,14 @@
 import api from './api';
-import type { AuthResponse, LoginCredentials, ChangePasswordData, User } from '@/types';
+import type { AuthResponse, MagicLinkRequest, MagicLinkVerify, User } from '@/types';
 
 export const authService = {
-  async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/api/auth/login', credentials);
+  async requestMagicLink(data: MagicLinkRequest): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>('/api/auth/magic-link/request', data);
+    return response.data;
+  },
+
+  async verifyMagicLink(data: MagicLinkVerify): Promise<AuthResponse> {
+    const response = await api.post<AuthResponse>('/api/auth/magic-link/verify', data);
     return response.data;
   },
 
@@ -14,10 +19,6 @@ export const authService = {
   async getProfile(): Promise<User> {
     const response = await api.get<User>('/api/auth/me');
     return response.data;
-  },
-
-  async changePassword(data: ChangePasswordData): Promise<void> {
-    await api.post('/api/auth/change-password', data);
   },
 
   async refreshTokens(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {

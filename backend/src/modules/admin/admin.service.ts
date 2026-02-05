@@ -16,13 +16,6 @@ export class AdminService {
   ) {}
 
   async create(createAdminDto: CreateAdminDto): Promise<AdminUser> {
-    const existingByUsername = await this.adminRepository.findOne({
-      where: { username: createAdminDto.username },
-    });
-    if (existingByUsername) {
-      throw new ConflictException('Username already exists');
-    }
-
     const existingByEmail = await this.adminRepository.findOne({
       where: { email: createAdminDto.email },
     });
@@ -31,22 +24,18 @@ export class AdminService {
     }
 
     const admin = this.adminRepository.create({
-      username: createAdminDto.username,
       email: createAdminDto.email,
-      password: createAdminDto.password,
       fullName: createAdminDto.fullName,
       role: createAdminDto.role || AdminRole.ADMIN,
     });
 
-    const saved = await this.adminRepository.save(admin);
-    return this.sanitizeAdmin(saved);
+    return this.adminRepository.save(admin);
   }
 
   async findAll(): Promise<AdminUser[]> {
-    const admins = await this.adminRepository.find({
+    return this.adminRepository.find({
       order: { createdAt: 'DESC' },
     });
-    return admins.map((admin) => this.sanitizeAdmin(admin));
   }
 
   async findOne(id: string): Promise<AdminUser> {
@@ -54,11 +43,7 @@ export class AdminService {
     if (!admin) {
       throw new NotFoundException('Admin not found');
     }
-    return this.sanitizeAdmin(admin);
-  }
-
-  async findByUsername(username: string): Promise<AdminUser | null> {
-    return this.adminRepository.findOne({ where: { username } });
+    return admin;
   }
 
   async findByEmail(email: string): Promise<AdminUser | null> {
@@ -71,15 +56,6 @@ export class AdminService {
       throw new NotFoundException('Admin not found');
     }
 
-    if (updateAdminDto.username && updateAdminDto.username !== admin.username) {
-      const existingByUsername = await this.adminRepository.findOne({
-        where: { username: updateAdminDto.username },
-      });
-      if (existingByUsername) {
-        throw new ConflictException('Username already exists');
-      }
-    }
-
     if (updateAdminDto.email && updateAdminDto.email !== admin.email) {
       const existingByEmail = await this.adminRepository.findOne({
         where: { email: updateAdminDto.email },
@@ -90,8 +66,7 @@ export class AdminService {
     }
 
     Object.assign(admin, updateAdminDto);
-    const updated = await this.adminRepository.save(admin);
-    return this.sanitizeAdmin(updated);
+    return this.adminRepository.save(admin);
   }
 
   async remove(id: string): Promise<void> {
@@ -104,10 +79,5 @@ export class AdminService {
 
   async updateLastLogin(id: string): Promise<void> {
     await this.adminRepository.update(id, { lastLoginAt: new Date() });
-  }
-
-  private sanitizeAdmin(admin: AdminUser): AdminUser {
-    const { passwordHash, ...sanitized } = admin;
-    return sanitized as AdminUser;
   }
 }

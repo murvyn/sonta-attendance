@@ -1,5 +1,4 @@
 import { DataSource } from 'typeorm';
-import * as bcrypt from 'bcrypt';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -18,9 +17,10 @@ async function seed() {
     await AppDataSource.initialize();
     console.log('Database connected');
 
-    // Check if super admin exists
+    // Check if super admin exists by email
     const existingAdmin = await AppDataSource.query(
-      "SELECT * FROM admin_users WHERE username = 'superadmin'"
+      'SELECT * FROM admin_users WHERE email = $1',
+      ['marvin.asamoah.123@gmail.com'],
     );
 
     if (existingAdmin.length > 0) {
@@ -29,20 +29,17 @@ async function seed() {
       return;
     }
 
-    // Create super admin
-    const passwordHash = await bcrypt.hash('Admin@123', 12);
-
+    // Create super admin (magic link auth - no password needed)
     await AppDataSource.query(
-      `INSERT INTO admin_users (username, email, password_hash, full_name, role, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      ['superadmin', 'admin@sonta.local', passwordHash, 'Super Admin', 'super_admin', true]
+      `INSERT INTO admin_users (email, full_name, role, is_active)
+       VALUES ($1, $2, $3, $4)`,
+      ['marvin.asamoah.123@gmail.com', 'Marvin Asamoah', 'super_admin', true],
     );
 
     console.log('Super admin created successfully!');
-    console.log('Username: superadmin');
-    console.log('Password: Admin@123');
+    console.log('Email: marvin.asamoah.123@gmail.com');
     console.log('');
-    console.log('IMPORTANT: Change this password after first login!');
+    console.log('Use the magic link login to sign in.');
 
     await AppDataSource.destroy();
   } catch (error) {

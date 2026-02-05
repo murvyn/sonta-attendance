@@ -87,7 +87,7 @@ export function NavUser() {
                 </Avatar>
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{user.fullName || user.username}</span>
+                <span className="truncate font-semibold">{user.fullName || user.email}</span>
                 <span className="truncate text-xs text-muted-foreground">{user.email}</span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
@@ -109,7 +109,7 @@ export function NavUser() {
                   </Avatar>
                   <div className="flex flex-col flex-1 min-w-0">
                     <p className="text-sm font-bold leading-tight truncate">
-                      {user.fullName || user.username}
+                      {user.fullName || user.email}
                     </p>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">
                       {user.email}

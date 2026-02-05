@@ -29,12 +29,6 @@ export default function ProfilePage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium text-muted-foreground">
-                Username
-              </label>
-              <p className="text-sm">{user?.username}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">
                 Email
               </label>
               <p className="text-sm">{user?.email}</p>

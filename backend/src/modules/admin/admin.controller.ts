@@ -32,10 +32,10 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Post()
-  @Roles(AdminRole.SUPER_ADMIN)
+  @Roles(AdminRole.SUPER_ADMIN, AdminRole.ADMIN)
   @ApiOperation({ summary: 'Create a new admin user' })
   @ApiResponse({ status: 201, description: 'Admin created successfully' })
-  @ApiResponse({ status: 409, description: 'Username or email already exists' })
+  @ApiResponse({ status: 409, description: 'Email already exists' })
   create(@Body() createAdminDto: CreateAdminDto) {
     return this.adminService.create(createAdminDto);
   }
@@ -56,11 +56,11 @@ export class AdminController {
   }
 
   @Put(':id')
-  @Roles(AdminRole.SUPER_ADMIN)
+  @Roles(AdminRole.SUPER_ADMIN, AdminRole.ADMIN)
   @ApiOperation({ summary: 'Update admin user' })
   @ApiResponse({ status: 200, description: 'Admin updated successfully' })
   @ApiResponse({ status: 404, description: 'Admin not found' })
-  @ApiResponse({ status: 409, description: 'Username or email already exists' })
+  @ApiResponse({ status: 409, description: 'Email already exists' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateAdminDto: UpdateAdminDto,
@@ -69,7 +69,7 @@ export class AdminController {
   }
 
   @Delete(':id')
-  @Roles(AdminRole.SUPER_ADMIN)
+  @Roles(AdminRole.SUPER_ADMIN, AdminRole.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete admin user' })
   @ApiResponse({ status: 204, description: 'Admin deleted successfully' })

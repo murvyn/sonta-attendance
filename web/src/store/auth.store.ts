@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User, LoginCredentials } from '@/types';
+import type { User, MagicLinkRequest, MagicLinkVerify } from '@/types';
 import { authService } from '@/services/auth.service';
 
 interface AuthState {
@@ -10,11 +10,15 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  magicLinkSent: boolean;
+  magicLinkEmail: string | null;
 
-  login: (credentials: LoginCredentials) => Promise<void>;
+  requestMagicLink: (data: MagicLinkRequest) => Promise<void>;
+  verifyMagicLink: (data: MagicLinkVerify) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   clearError: () => void;
+  resetMagicLinkSent: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -24,23 +28,46 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      magicLinkSent: false,
+      magicLinkEmail: null,
 
-      login: async (credentials: LoginCredentials) => {
+      requestMagicLink: async (data: MagicLinkRequest) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await authService.login(credentials);
+          await authService.requestMagicLink(data);
+          set({
+            isLoading: false,
+            magicLinkSent: true,
+            magicLinkEmail: data.email,
+          });
+        } catch (error: unknown) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : 'Failed to send magic link. Please try again.';
+          set({ error: message, isLoading: false });
+          throw error;
+        }
+      },
+
+      verifyMagicLink: async (data: MagicLinkVerify) => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await authService.verifyMagicLink(data);
           localStorage.setItem('accessToken', response.accessToken);
           localStorage.setItem('refreshToken', response.refreshToken);
           set({
             user: response.user,
             isAuthenticated: true,
             isLoading: false,
+            magicLinkSent: false,
+            magicLinkEmail: null,
           });
         } catch (error: unknown) {
           const message =
             error instanceof Error
               ? error.message
-              : 'Login failed. Please check your credentials.';
+              : 'Invalid or expired magic link.';
           set({ error: message, isLoading: false });
           throw error;
         }
@@ -54,7 +81,12 @@ export const useAuthStore = create<AuthState>()(
         } finally {
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
-          set({ user: null, isAuthenticated: false });
+          set({
+            user: null,
+            isAuthenticated: false,
+            magicLinkSent: false,
+            magicLinkEmail: null,
+          });
         }
       },
 
@@ -77,10 +109,15 @@ export const useAuthStore = create<AuthState>()(
       },
 
       clearError: () => set({ error: null }),
+      resetMagicLinkSent: () =>
+        set({ magicLinkSent: false, magicLinkEmail: null }),
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
   )
 );

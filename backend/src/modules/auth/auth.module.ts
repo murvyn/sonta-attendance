@@ -7,11 +7,14 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { AdminModule } from '../admin/admin.module';
+import { EmailModule } from '../email/email.module';
 import { AdminUser } from '../admin/entities/admin-user.entity';
+import { MagicLinkToken } from './entities/magic-link-token.entity';
 
 @Module({
   imports: [
     AdminModule,
+    EmailModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -23,7 +26,7 @@ import { AdminUser } from '../admin/entities/admin-user.entity';
       }),
       inject: [ConfigService],
     }),
-    TypeOrmModule.forFeature([AdminUser]),
+    TypeOrmModule.forFeature([AdminUser, MagicLinkToken]),
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

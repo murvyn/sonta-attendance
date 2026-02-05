@@ -1,2 +1,2 @@
-export * from './login.dto';
-export * from './change-password.dto';
+export * from './magic-link-request.dto';
+export * from './magic-link-verify.dto';

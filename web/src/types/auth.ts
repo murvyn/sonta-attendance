@@ -5,7 +5,6 @@ export enum AdminRole {
 
 export interface User {
   id: string;
-  username: string;
   email: string;
   fullName: string;
   role: AdminRole;
@@ -17,12 +16,10 @@ export interface AuthResponse {
   user: User;
 }
 
-export interface LoginCredentials {
-  username: string;
-  password: string;
+export interface MagicLinkRequest {
+  email: string;
 }
 
-export interface ChangePasswordData {
-  currentPassword: string;
-  newPassword: string;
+export interface MagicLinkVerify {
+  token: string;
 }
