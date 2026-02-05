@@ -7,6 +7,7 @@ export enum SontaHeadStatus {
 export interface SontaHead {
   id: string;
   name: string;
+  sontaName?: string;
   phone: string;
   email?: string;
   profileImageUrl: string;
@@ -19,6 +20,7 @@ export interface SontaHead {
 
 export interface CreateSontaHeadData {
   name: string;
+  sontaName?: string;
   phone: string;
   email?: string;
   notes?: string;
@@ -28,6 +30,7 @@ export interface CreateSontaHeadData {
 
 export interface UpdateSontaHeadData {
   name?: string;
+  sontaName?: string;
   phone?: string;
   email?: string;
   notes?: string;

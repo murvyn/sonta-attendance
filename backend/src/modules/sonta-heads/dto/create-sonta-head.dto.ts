@@ -17,6 +17,12 @@ export class CreateSontaHeadDto {
   @MaxLength(255)
   name: string;
 
+  @ApiPropertyOptional({ example: 'Sonta Alpha', description: 'Name of the sonta group' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  sontaName?: string;
+
   @ApiProperty({ example: '+233201234567', description: 'Phone number (unique)' })
   @IsString()
   @IsNotEmpty()

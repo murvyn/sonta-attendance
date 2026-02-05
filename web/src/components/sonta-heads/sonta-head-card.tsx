@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { MoreVertical, Phone, Mail, Edit, Trash2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { MoreVertical, Phone, Mail, Edit, Trash2, CheckCircle, XCircle, Clock, Users } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -142,6 +142,15 @@ export function SontaHeadCard({ sontaHead, onEdit, onDelete }: SontaHeadCardProp
 
             {/* Contact Information */}
             <div className="mt-3 space-y-2">
+              {sontaHead.sontaName && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground group/item hover:text-foreground transition-smooth">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent/10 text-accent group-hover/item:bg-accent group-hover/item:text-accent-foreground transition-smooth">
+                    <Users className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="truncate font-medium">{sontaHead.sontaName}</span>
+                </div>
+              )}
+
               <div className="flex items-center gap-2 text-sm text-muted-foreground group/item hover:text-foreground transition-smooth">
                 <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary group-hover/item:bg-primary group-hover/item:text-primary-foreground transition-smooth">
                   <Phone className="h-3.5 w-3.5" />

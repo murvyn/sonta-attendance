@@ -66,6 +66,7 @@ export class SontaHeadsController {
       required: ['name', 'phone', 'profileImage'],
       properties: {
         name: { type: 'string', example: 'John Doe' },
+        sontaName: { type: 'string', example: 'Sonta Alpha' },
         phone: { type: 'string', example: '+233201234567' },
         email: { type: 'string', example: 'john@example.com' },
         notes: { type: 'string' },
@@ -122,6 +123,7 @@ export class SontaHeadsController {
       type: 'object',
       properties: {
         name: { type: 'string', example: 'John Doe' },
+        sontaName: { type: 'string', example: 'Sonta Alpha' },
         phone: { type: 'string', example: '+233201234567' },
         email: { type: 'string', example: 'john@example.com' },
         notes: { type: 'string' },
