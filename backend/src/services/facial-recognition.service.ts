@@ -1,177 +1,155 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import * as faceapi from '@vladmandic/face-api';
-import * as canvas from 'canvas';
-import { join } from 'path';
-
-// Configure face-api.js to use node-canvas
-const { Canvas, Image, ImageData } = canvas;
-faceapi.env.monkeyPatch({ Canvas, Image, ImageData } as any);
+import axios from 'axios';
+import FormData from 'form-data';
 
 @Injectable()
 export class FacialRecognitionService implements OnModuleInit {
   private readonly logger = new Logger(FacialRecognitionService.name);
-  private modelsLoaded = false;
-  private readonly modelsPath = join(process.cwd(), 'models');
+  private readonly faceServiceUrl =
+    process.env.FACE_SERVICE_URL || 'http://localhost:8000';
+  private serviceReady = false;
 
   async onModuleInit() {
-    await this.loadModels();
+    await this.checkServiceHealth();
   }
 
-  /**
-   * Load face-api.js models on application startup
-   */
-  private async loadModels(): Promise<void> {
+  private async checkServiceHealth(): Promise<void> {
     try {
-      this.logger.log(`Loading face-api.js models from: ${this.modelsPath}`);
-
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromDisk(this.modelsPath),
-        faceapi.nets.faceLandmark68Net.loadFromDisk(this.modelsPath),
-        faceapi.nets.faceRecognitionNet.loadFromDisk(this.modelsPath),
-      ]);
-
-      this.modelsLoaded = true;
-      this.logger.log('Face-api.js models loaded successfully (TinyFaceDetector)');
+      this.logger.log(
+        `Checking face service health at: ${this.faceServiceUrl}`,
+      );
+      const response = await axios.get(`${this.faceServiceUrl}/health`, {
+        timeout: 5000,
+      });
+      this.serviceReady = response.data.model_loaded;
+      this.logger.log(
+        `Face service is ${this.serviceReady ? 'ready' : 'not ready'} (model: ${response.data.model})`,
+      );
     } catch (error) {
-      this.logger.error('Failed to load face-api.js models', error);
-      throw new Error('Facial recognition models could not be loaded');
+      this.logger.error(
+        `Face service is not available at ${this.faceServiceUrl}`,
+        error.message,
+      );
+      this.serviceReady = false;
     }
   }
 
-  /**
-   * Detect a single face in the image and validate it's suitable for recognition
-   * @param imageBuffer - Image buffer (JPEG/PNG)
-   * @returns True if a valid face is detected, false otherwise
-   */
   async detectFace(imageBuffer: Buffer): Promise<boolean> {
-    if (!this.modelsLoaded) {
-      throw new Error('Face recognition models not loaded');
+    if (!this.serviceReady) {
+      throw new Error('Face recognition service not ready');
     }
 
     try {
-      const img = await canvas.loadImage(imageBuffer);
-      const detections = await faceapi
-        .detectAllFaces(img as any, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks();
+      const formData = new FormData();
+      formData.append('image', imageBuffer, {
+        filename: 'image.jpg',
+        contentType: 'image/jpeg',
+      });
 
-      // Must have exactly one face
-      if (detections.length === 0) {
-        this.logger.warn('No face detected in image');
-        return false;
-      }
+      const response = await axios.post(
+        `${this.faceServiceUrl}/detect`,
+        formData,
+        {
+          headers: formData.getHeaders(),
+          timeout: 10000,
+        },
+      );
 
-      if (detections.length > 1) {
-        this.logger.warn(`Multiple faces detected (${detections.length})`);
-        return false;
-      }
-
-      // Check face detection score (confidence)
-      const detection = detections[0];
-      if (detection.detection.score < 0.5) {
-        this.logger.warn(
-          `Face detection confidence too low: ${detection.detection.score}`,
-        );
+      if (!response.data.detected) {
+        this.logger.warn(response.data.message);
         return false;
       }
 
       this.logger.log(
-        `Face detected successfully with confidence: ${detection.detection.score.toFixed(3)}`,
+        `Face detected with confidence: ${response.data.confidence.toFixed(3)}`,
       );
       return true;
     } catch (error) {
-      this.logger.error('Error detecting face', error);
+      this.logger.error('Error detecting face', error.message);
       return false;
     }
   }
 
-  /**
-   * Extract 128-dimensional face embedding from image
-   * @param imageBuffer - Image buffer (JPEG/PNG)
-   * @returns Float32Array of 128 dimensions, or null if no valid face found
-   */
   async extractEmbedding(imageBuffer: Buffer): Promise<Float32Array | null> {
-    if (!this.modelsLoaded) {
-      throw new Error('Face recognition models not loaded');
+    if (!this.serviceReady) {
+      throw new Error('Face recognition service not ready');
     }
 
     try {
-      const img = await canvas.loadImage(imageBuffer);
+      const formData = new FormData();
+      formData.append('image', imageBuffer, {
+        filename: 'image.jpg',
+        contentType: 'image/jpeg',
+      });
 
-      const detection = await faceapi
-        .detectSingleFace(img as any, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks()
-        .withFaceDescriptor();
+      const response = await axios.post(
+        `${this.faceServiceUrl}/extract-embedding`,
+        formData,
+        {
+          headers: formData.getHeaders(),
+          timeout: 10000,
+        },
+      );
 
-      if (!detection) {
-        this.logger.warn('No face detected for embedding extraction');
+      if (!response.data.success) {
+        this.logger.warn('Failed to extract embedding');
         return null;
       }
 
-      // detection.descriptor is a Float32Array of 128 dimensions
-      const embedding = detection.descriptor;
+      // Convert array to Float32Array (InsightFace returns 512D embedding)
+      const embedding = new Float32Array(response.data.embedding);
 
       this.logger.log(
-        `Extracted face embedding: 128D vector, detection score: ${detection.detection.score.toFixed(3)}`,
+        `Extracted face embedding: ${embedding.length}D vector, confidence: ${response.data.confidence.toFixed(3)}`,
       );
 
       return embedding;
     } catch (error) {
-      this.logger.error('Error extracting face embedding', error);
+      if (error.response?.status === 400) {
+        this.logger.warn(
+          `Face extraction failed: ${error.response.data.detail}`,
+        );
+      } else {
+        this.logger.error('Error extracting embedding', error.message);
+      }
       return null;
     }
   }
 
-  /**
-   * Compare two face embeddings and calculate similarity
-   * @param embedding1 - First face embedding (128D)
-   * @param embedding2 - Second face embedding (128D)
-   * @returns Euclidean distance (lower = more similar, typically 0-1 range)
-   */
   compareEmbeddings(
     embedding1: Float32Array,
     embedding2: Float32Array,
   ): number {
-    if (embedding1.length !== 128 || embedding2.length !== 128) {
-      throw new Error('Embeddings must be 128-dimensional');
+    // Calculate cosine similarity
+    let dotProduct = 0;
+    let norm1 = 0;
+    let norm2 = 0;
+
+    for (let i = 0; i < embedding1.length; i++) {
+      dotProduct += embedding1[i] * embedding2[i];
+      norm1 += embedding1[i] * embedding1[i];
+      norm2 += embedding2[i] * embedding2[i];
     }
 
-    // Calculate Euclidean distance
-    const distance = faceapi.euclideanDistance(embedding1, embedding2);
+    const similarity = dotProduct / (Math.sqrt(norm1) * Math.sqrt(norm2));
+
+    // Convert similarity [-1, 1] to distance [0, 1]
+    // Similarity of 1 = distance of 0 (identical)
+    // Similarity of -1 = distance of 1 (completely different)
+    const distance = (1 - similarity) / 2;
 
     this.logger.debug(`Embedding distance: ${distance.toFixed(4)}`);
-
     return distance;
   }
 
-  /**
-   * Convert Euclidean distance to confidence percentage
-   * @param distance - Euclidean distance (0-1)
-   * @returns Confidence percentage (0-100)
-   *
-   * Distance interpretation:
-   * - < 0.4: Same person (high confidence)
-   * - 0.4-0.6: Likely same person (medium confidence)
-   * - > 0.6: Different person (low confidence)
-   */
   calculateConfidence(distance: number): number {
     // Convert distance to confidence percentage
-    // Distance of 0 = 100% confidence
-    // Distance of 0.6 = 0% confidence
-    // Use exponential decay for better distribution
-    const confidence = Math.max(
-      0,
-      Math.min(100, (1 - distance / 0.6) * 100),
-    );
-
+    // Distance of 0 = 100% confidence (identical)
+    // Distance of 0.5 = 0% confidence (completely different)
+    const confidence = Math.max(0, Math.min(100, (1 - distance / 0.5) * 100));
     return Math.round(confidence);
   }
 
-  /**
-   * Find best match from a list of known embeddings
-   * @param checkInEmbedding - Face embedding from check-in photo
-   * @param knownEmbeddings - Array of [sontaHeadId, embedding] pairs
-   * @returns Best match { sontaHeadId, confidence } or null if no good match
-   */
   findBestMatch(
     checkInEmbedding: Float32Array,
     knownEmbeddings: Array<{ sontaHeadId: string; embedding: Float32Array }>,
@@ -189,10 +167,7 @@ export class FacialRecognitionService implements OnModuleInit {
     let lowestDistance = Infinity;
 
     for (const known of knownEmbeddings) {
-      const distance = this.compareEmbeddings(
-        checkInEmbedding,
-        known.embedding,
-      );
+      const distance = this.compareEmbeddings(checkInEmbedding, known.embedding);
 
       if (distance < lowestDistance) {
         lowestDistance = distance;
@@ -213,10 +188,7 @@ export class FacialRecognitionService implements OnModuleInit {
     return bestMatch;
   }
 
-  /**
-   * Check if face-api.js models are loaded and ready
-   */
   isReady(): boolean {
-    return this.modelsLoaded;
+    return this.serviceReady;
   }
 }

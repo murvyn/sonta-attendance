@@ -32,6 +32,25 @@ services:
       timeout: 5s
       retries: 5
 
+  face-service:
+    build:
+      context: ./face-service
+      dockerfile: Dockerfile
+    container_name: sonta-face-service
+    ports:
+      - '8000:8000'
+    volumes:
+      - face_models:/root/.insightface/models
+    environment:
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
@@ -47,10 +66,13 @@ services:
       - DATABASE_PORT=5432
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - FACE_SERVICE_URL=http://face-service:8000
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      face-service:
         condition: service_healthy
     volumes:
       - ./backend/models:/app/models
@@ -74,3 +96,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  face_models:
