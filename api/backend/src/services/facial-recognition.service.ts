@@ -10,34 +10,64 @@ export class FacialRecognitionService implements OnModuleInit {
   private serviceReady = false;
 
   async onModuleInit() {
-    await this.checkServiceHealth();
+    // Non-blocking: let backend start while face-service loads
+    this.waitForService();
   }
 
-  private async checkServiceHealth(): Promise<void> {
-    try {
-      this.logger.log(
-        `Checking face service health at: ${this.faceServiceUrl}`,
+  private async waitForService(
+    maxRetries = 10,
+    delayMs = 3000,
+  ): Promise<void> {
+    this.logger.log(
+      `Waiting for face service at ${this.faceServiceUrl}...`,
+    );
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await axios.get<{
+          model_loaded: boolean;
+          model: string;
+        }>(`${this.faceServiceUrl}/health`, { timeout: 5000 });
+        this.serviceReady = response.data.model_loaded;
+        this.logger.log(
+          `Face service is ready (model: ${response.data.model})`,
+        );
+        return;
+      } catch {
+        if (attempt < maxRetries) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+      }
+    }
+
+    this.logger.warn(
+      `Face service not available after ${maxRetries} attempts — facial recognition will be unavailable`,
+    );
+    this.serviceReady = false;
+  }
+
+  async ensureReady(): Promise<void> {
+    if (!this.serviceReady) {
+      // Try one more health check in case service just became available
+      try {
+        const response = await axios.get<{ model_loaded: boolean }>(
+          `${this.faceServiceUrl}/health`,
+          { timeout: 3000 },
+        );
+        this.serviceReady = response.data.model_loaded;
+      } catch {
+        // still not ready
+      }
+    }
+    if (!this.serviceReady) {
+      throw new Error(
+        'Face recognition service is still loading. Please try again in a few seconds.',
       );
-      const response = await axios.get(`${this.faceServiceUrl}/health`, {
-        timeout: 5000,
-      });
-      this.serviceReady = response.data.model_loaded;
-      this.logger.log(
-        `Face service is ${this.serviceReady ? 'ready' : 'not ready'} (model: ${response.data.model})`,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Face service is not available at ${this.faceServiceUrl}`,
-        error.message,
-      );
-      this.serviceReady = false;
     }
   }
 
   async detectFace(imageBuffer: Buffer): Promise<boolean> {
-    if (!this.serviceReady) {
-      throw new Error('Face recognition service not ready');
-    }
+    await this.ensureReady();
 
     try {
       const formData = new FormData();
@@ -71,9 +101,7 @@ export class FacialRecognitionService implements OnModuleInit {
   }
 
   async extractEmbedding(imageBuffer: Buffer): Promise<Float32Array | null> {
-    if (!this.serviceReady) {
-      throw new Error('Face recognition service not ready');
-    }
+    await this.ensureReady();
 
     try {
       const formData = new FormData();

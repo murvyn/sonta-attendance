@@ -94,9 +94,11 @@ export class FacialRecognitionController {
         };
       }
 
-      throw new BadRequestException(
-        'Failed to process image. Please try again with a different photo.',
-      );
+      const message =
+        error instanceof Error && error.message.includes('still loading')
+          ? error.message
+          : 'Failed to process image. Please try again with a different photo.';
+      throw new BadRequestException(message);
     }
   }
 }
