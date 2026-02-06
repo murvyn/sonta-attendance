@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -17,6 +18,8 @@ import { MeetingsService } from './meetings.service';
 @ApiTags('QR Codes')
 @Controller('api/qr')
 export class QrController {
+  private readonly logger = new Logger(QrController.name);
+
   constructor(private readonly meetingsService: MeetingsService) {}
 
   @Get(':token/validate')
@@ -26,16 +29,19 @@ export class QrController {
   @ApiResponse({ status: 200, description: 'QR validation result' })
   @ApiResponse({ status: 400, description: 'Invalid or expired QR' })
   async validateQr(@Param('token') token: string) {
+    this.logger.log(`Validating QR token: ${token}`);
     const result = await this.meetingsService.validateQrToken(token);
+    this.logger.log(`Validation result: ${JSON.stringify(result)}`);
 
     if (!result.valid) {
+      this.logger.warn(`QR validation failed: ${result.error}`);
       throw new BadRequestException({
         message: result.error,
         code: 'QR_INVALID',
       });
     }
 
-    return {
+    const response = {
       valid: true,
       meeting: {
         id: result.meeting.id,
@@ -49,6 +55,8 @@ export class QrController {
         actualStart: result.meeting.actualStart,
       },
     };
+    this.logger.log(`Returning response with meeting status: ${response.meeting.status}`);
+    return response;
   }
 
   @Get(':token/info')

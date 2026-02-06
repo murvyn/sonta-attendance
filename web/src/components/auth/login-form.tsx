@@ -69,7 +69,7 @@ export function LoginForm() {
       <div className="space-y-6 stagger-fade-in">
         {/* Mobile Logo */}
         <div className="lg:hidden text-center space-y-2 mb-8">
-          <h1 className="text-3xl font-black tracking-tight bg-gradient-hero bg-clip-text text-transparent">
+          <h1 className="text-3xl font-black tracking-tight  ">
             Sonta Head
           </h1>
           <p className="text-sm text-muted-foreground font-medium">
@@ -116,7 +116,7 @@ export function LoginForm() {
     <div className="space-y-6 stagger-fade-in">
       {/* Mobile Logo */}
       <div className="lg:hidden text-center space-y-2 mb-8">
-        <h1 className="text-3xl font-black tracking-tight bg-gradient-hero bg-clip-text text-transparent">
+        <h1 className="text-3xl font-black tracking-tight  ">
           Sonta Head
         </h1>
         <p className="text-sm text-muted-foreground font-medium">

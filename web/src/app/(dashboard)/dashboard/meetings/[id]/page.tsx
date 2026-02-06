@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import {
@@ -13,16 +13,24 @@ import {
   Square,
   Loader2,
   AlertCircle,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { QrCodeDisplay } from '@/components/meetings';
+import { QrCodeDisplay, MeetingForm, MeetingDeleteDialog } from '@/components/meetings';
 import { LiveAttendanceMonitor, ManualCheckInModal, PendingVerificationModal } from '@/components/attendance';
-import { meetingsService } from '@/services';
-import type { Meeting } from '@/types';
+import {
+  useMeeting,
+  useStartMeeting,
+  useEndMeeting,
+  useRegenerateQr,
+  useUpdateMeeting,
+  useDeleteMeeting,
+} from '@/hooks';
+import type { Meeting, CreateMeetingData, UpdateMeetingData } from '@/types';
 import { MeetingStatus } from '@/types';
 
 const statusColors: Record<MeetingStatus, string> = {
@@ -42,76 +50,51 @@ const statusLabels: Record<MeetingStatus, string> = {
 export default function MeetingDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const [meeting, setMeeting] = useState<Meeting | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isActionLoading, setIsActionLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const meetingId = params.id as string;
+
+  // Dialog state
   const [manualCheckInOpen, setManualCheckInOpen] = useState(false);
   const [selectedSontaHead, setSelectedSontaHead] = useState<any>(null);
   const [pendingVerificationOpen, setPendingVerificationOpen] = useState(false);
   const [selectedPendingId, setSelectedPendingId] = useState<string | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
-  const meetingId = params.id as string;
+  // Queries and Mutations
+  const { data: meeting, isLoading, error: queryError } = useMeeting(meetingId);
+  const startMutation = useStartMeeting();
+  const endMutation = useEndMeeting();
+  const regenerateQrMutation = useRegenerateQr();
+  const updateMutation = useUpdateMeeting();
+  const deleteMutation = useDeleteMeeting();
 
-  const fetchMeeting = useCallback(async () => {
-    if (!meetingId) return;
-    try {
-      setIsLoading(true);
-      setError(null);
-      const data = await meetingsService.getById(meetingId);
-      setMeeting(data);
-    } catch (err) {
-      setError('Failed to load meeting details');
-      console.error('Error fetching meeting:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [meetingId]);
-
-  useEffect(() => {
-    fetchMeeting();
-  }, [fetchMeeting]);
-
+  // Handlers
   const handleStart = async () => {
     if (!meeting) return;
-    try {
-      setIsActionLoading(true);
-      await meetingsService.start(meeting.id);
-      toast.success('Meeting started');
-      fetchMeeting();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to start meeting');
-    } finally {
-      setIsActionLoading(false);
-    }
+    await startMutation.mutateAsync(meeting.id);
   };
 
   const handleEnd = async () => {
     if (!meeting) return;
-    try {
-      setIsActionLoading(true);
-      await meetingsService.end(meeting.id);
-      toast.success('Meeting ended');
-      fetchMeeting();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to end meeting');
-    } finally {
-      setIsActionLoading(false);
-    }
+    await endMutation.mutateAsync(meeting.id);
   };
 
   const handleRegenerateQr = async () => {
     if (!meeting) return;
-    try {
-      await meetingsService.regenerateQr(meeting.id);
-      toast.success('QR code regenerated');
-      fetchMeeting();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to regenerate QR');
-    }
+    await regenerateQrMutation.mutateAsync(meeting.id);
+  };
+
+  const handleUpdate = async (data: CreateMeetingData) => {
+    if (!meeting) return;
+    await updateMutation.mutateAsync({ id: meeting.id, data: data as UpdateMeetingData });
+    setIsFormOpen(false);
+  };
+
+  const handleDelete = async () => {
+    if (!meeting) return;
+    await deleteMutation.mutateAsync(meeting.id);
+    setIsDeleteOpen(false);
+    router.push('/dashboard/meetings');
   };
 
   if (isLoading) {
@@ -122,11 +105,13 @@ export default function MeetingDetailPage() {
     );
   }
 
-  if (error || !meeting) {
+  if (queryError || !meeting) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
         <AlertCircle className="h-12 w-12 text-muted-foreground" />
-        <p className="text-muted-foreground">{error || 'Meeting not found'}</p>
+        <p className="text-muted-foreground">
+          {queryError ? 'Failed to load meeting details' : 'Meeting not found'}
+        </p>
         <Button variant="outline" onClick={() => router.push('/dashboard/meetings')}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Meetings
@@ -160,9 +145,29 @@ export default function MeetingDetailPage() {
         </div>
 
         <div className="flex gap-2">
+          {(meeting.status === MeetingStatus.SCHEDULED || meeting.status === MeetingStatus.ACTIVE) && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setIsFormOpen(true)}
+                disabled={updateMutation.isPending}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsDeleteOpen(true)}
+                disabled={deleteMutation.isPending}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </Button>
+            </>
+          )}
           {meeting.status === MeetingStatus.SCHEDULED && (
-            <Button onClick={handleStart} disabled={isActionLoading}>
-              {isActionLoading ? (
+            <Button onClick={handleStart} disabled={startMutation.isPending}>
+              {startMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Play className="mr-2 h-4 w-4" />
@@ -171,8 +176,8 @@ export default function MeetingDetailPage() {
             </Button>
           )}
           {meeting.status === MeetingStatus.ACTIVE && (
-            <Button variant="destructive" onClick={handleEnd} disabled={isActionLoading}>
-              {isActionLoading ? (
+            <Button variant="destructive" onClick={handleEnd} disabled={endMutation.isPending}>
+              {endMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Square className="mr-2 h-4 w-4" />
@@ -322,6 +327,24 @@ export default function MeetingDetailPage() {
         onSuccess={() => {
           // Modal will close automatically, attendance monitor will update via WebSocket
         }}
+      />
+
+      {/* Edit Meeting Form */}
+      <MeetingForm
+        open={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        onSubmit={handleUpdate}
+        meeting={meeting}
+        isLoading={updateMutation.isPending}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <MeetingDeleteDialog
+        open={isDeleteOpen}
+        onClose={() => setIsDeleteOpen(false)}
+        onConfirm={handleDelete}
+        meeting={meeting}
+        isLoading={deleteMutation.isPending}
       />
     </div>
   );

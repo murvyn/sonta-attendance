@@ -42,24 +42,30 @@ export default function CheckInPage() {
   const validateQrToken = async (token: string) => {
     setIsLoading(true);
     try {
+      console.log('Validating QR token:', token);
       const result = await attendanceService.validateQrForCheckIn(token);
+      console.log('QR validation result:', result);
 
       if (!result.valid || !result.meeting) {
+        console.error('QR validation failed:', result);
         toast.error('Invalid or expired QR code');
         setStep('scan');
         return;
       }
 
       if (result.meeting.status !== 'active') {
+        console.warn('Meeting is not active:', result.meeting.status);
         toast.error(`Meeting is ${result.meeting.status}. Only active meetings allow check-in.`);
         setStep('scan');
         return;
       }
 
+      console.log('QR validation successful, meeting data:', result.meeting);
       setMeetingData(result.meeting);
       setQrToken(token);
       setStep('location');
     } catch (error) {
+      console.error('Error validating QR code:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to validate QR code');
       setStep('scan');
     } finally {

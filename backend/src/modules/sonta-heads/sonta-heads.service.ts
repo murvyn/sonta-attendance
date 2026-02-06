@@ -206,8 +206,9 @@ export class SontaHeadsService {
     const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
     const imagePath = path.join(this.uploadDir, filename);
 
-    // Process image with Sharp: resize, convert to JPEG, optimize
+    // Process image with Sharp: auto-rotate based on EXIF, resize, convert to JPEG, optimize
     await sharp(file.buffer)
+      .rotate() // Auto-rotate based on EXIF orientation metadata
       .resize(400, 400, {
         fit: 'cover',
         position: 'centre',

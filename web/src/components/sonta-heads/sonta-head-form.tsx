@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -70,14 +70,37 @@ export function SontaHeadForm({
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: sontaHead?.name || '',
-      sontaName: sontaHead?.sontaName || '',
-      phone: sontaHead?.phone || '',
-      email: sontaHead?.email || '',
-      notes: sontaHead?.notes || '',
-      status: sontaHead?.status || SontaHeadStatus.ACTIVE,
+      name: '',
+      sontaName: '',
+      phone: '',
+      email: '',
+      notes: '',
+      status: SontaHeadStatus.ACTIVE,
     },
   });
+
+  // Reset form when sontaHead changes (prefill for editing)
+  useEffect(() => {
+    if (sontaHead) {
+      form.reset({
+        name: sontaHead.name || '',
+        sontaName: sontaHead.sontaName || '',
+        phone: sontaHead.phone || '',
+        email: sontaHead.email || '',
+        notes: sontaHead.notes || '',
+        status: sontaHead.status || SontaHeadStatus.ACTIVE,
+      });
+    } else {
+      form.reset({
+        name: '',
+        sontaName: '',
+        phone: '',
+        email: '',
+        notes: '',
+        status: SontaHeadStatus.ACTIVE,
+      });
+    }
+  }, [sontaHead, form]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

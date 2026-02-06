@@ -1,27 +1,29 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, CalendarDays, Loader2, CheckCircle, Clock, XCircle, Calendar } from 'lucide-react';
-import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MeetingCard, MeetingForm, MeetingDeleteDialog } from '@/components/meetings';
-import { meetingsService } from '@/services';
-import type { Meeting, MeetingQueryParams, CreateMeetingData, UpdateMeetingData } from '@/types';
+import {
+  useMeetings,
+  useCreateMeeting,
+  useUpdateMeeting,
+  useDeleteMeeting,
+  useStartMeeting,
+  useEndMeeting,
+  useCancelMeeting,
+} from '@/hooks';
+import type { Meeting, CreateMeetingData, UpdateMeetingData } from '@/types';
 import { MeetingStatus } from '@/types';
 import { cn } from '@/lib/utils';
 
 export default function MeetingsPage() {
   const router = useRouter();
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [totalPages, setTotalPages] = useState(1);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [total, setTotal] = useState(0);
 
-  // Filter state
+  // Filter and pagination state
+  const [currentPage, setCurrentPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   // Dialog state
@@ -29,117 +31,61 @@ export default function MeetingsPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
 
-  const fetchMeetings = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const params: MeetingQueryParams = {
-        page: currentPage,
-        limit: 12,
-      };
-      if (statusFilter && statusFilter !== 'all') {
-        params.status = statusFilter as MeetingStatus;
-      }
-
-      const result = await meetingsService.getAll(params);
-      setMeetings(result.data);
-      setTotalPages(result.totalPages);
-      setTotal(result.total);
-    } catch (error) {
-      toast.error('Failed to load meetings');
-      console.error('Error fetching meetings:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentPage, statusFilter]);
-
-  useEffect(() => {
-    fetchMeetings();
-  }, [fetchMeetings]);
-
+  // Reset to page 1 when filter changes
   useEffect(() => {
     setCurrentPage(1);
   }, [statusFilter]);
 
+  // Build query params
+  const params = {
+    page: currentPage,
+    limit: 12,
+    ...(statusFilter !== 'all' && { status: statusFilter as MeetingStatus }),
+  };
+
+  // Queries and Mutations
+  const { data, isLoading } = useMeetings(params);
+  const meetings = data?.data ?? [];
+  const totalPages = data?.totalPages ?? 1;
+  const total = data?.total ?? 0;
+
+  const createMutation = useCreateMeeting();
+  const updateMutation = useUpdateMeeting();
+  const deleteMutation = useDeleteMeeting();
+  const startMutation = useStartMeeting();
+  const endMutation = useEndMeeting();
+  const cancelMutation = useCancelMeeting();
+
+  // Handlers
   const handleCreate = async (data: CreateMeetingData) => {
-    try {
-      setIsSubmitting(true);
-      await meetingsService.create(data);
-      toast.success('Meeting created successfully');
-      setIsFormOpen(false);
-      fetchMeetings();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to create meeting');
-    } finally {
-      setIsSubmitting(false);
-    }
+    await createMutation.mutateAsync(data);
+    setIsFormOpen(false);
   };
 
   const handleUpdate = async (data: CreateMeetingData) => {
     if (!selectedMeeting) return;
-    try {
-      setIsSubmitting(true);
-      await meetingsService.update(selectedMeeting.id, data as UpdateMeetingData);
-      toast.success('Meeting updated successfully');
-      setIsFormOpen(false);
-      setSelectedMeeting(null);
-      fetchMeetings();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to update meeting');
-    } finally {
-      setIsSubmitting(false);
-    }
+    await updateMutation.mutateAsync({ id: selectedMeeting.id, data: data as UpdateMeetingData });
+    setIsFormOpen(false);
+    setSelectedMeeting(null);
   };
 
   const handleDelete = async () => {
     if (!selectedMeeting) return;
-    try {
-      setIsSubmitting(true);
-      await meetingsService.delete(selectedMeeting.id);
-      toast.success('Meeting deleted successfully');
-      setIsDeleteOpen(false);
-      setSelectedMeeting(null);
-      fetchMeetings();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to delete meeting');
-    } finally {
-      setIsSubmitting(false);
-    }
+    await deleteMutation.mutateAsync(selectedMeeting.id);
+    setIsDeleteOpen(false);
+    setSelectedMeeting(null);
   };
 
   const handleStart = async (meeting: Meeting) => {
-    try {
-      await meetingsService.start(meeting.id);
-      toast.success('Meeting started');
-      fetchMeetings();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to start meeting');
-    }
+    await startMutation.mutateAsync(meeting.id);
   };
 
   const handleEnd = async (meeting: Meeting) => {
-    try {
-      await meetingsService.end(meeting.id);
-      toast.success('Meeting ended');
-      fetchMeetings();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to end meeting');
-    }
+    await endMutation.mutateAsync(meeting.id);
   };
 
   const handleCancel = async (meeting: Meeting) => {
-    try {
-      await meetingsService.cancel(meeting.id);
-      toast.success('Meeting cancelled');
-      fetchMeetings();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to cancel meeting');
-    }
+    await cancelMutation.mutateAsync(meeting.id);
   };
 
   const openEditForm = (meeting: Meeting) => {
@@ -174,7 +120,7 @@ export default function MeetingsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-4xl font-black tracking-tight bg-gradient-hero bg-clip-text text-transparent">
+          <h1 className="text-4xl font-black tracking-tight  ">
             Meetings
           </h1>
           <p className="text-lg text-muted-foreground font-medium">
@@ -321,7 +267,7 @@ export default function MeetingsPage() {
         }}
         onSubmit={selectedMeeting ? handleUpdate : handleCreate}
         meeting={selectedMeeting}
-        isLoading={isSubmitting}
+        isLoading={createMutation.isPending || updateMutation.isPending}
       />
 
       {/* Delete Confirmation Dialog */}
@@ -333,7 +279,7 @@ export default function MeetingsPage() {
         }}
         onConfirm={handleDelete}
         meeting={selectedMeeting}
-        isLoading={isSubmitting}
+        isLoading={deleteMutation.isPending}
       />
     </div>
   );

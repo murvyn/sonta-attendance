@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Users, Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,19 +14,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { SontaHeadCard, SontaHeadForm, DeleteDialog } from '@/components/sonta-heads';
-import { sontaHeadsService } from '@/services';
-import type { SontaHead, SontaHeadQueryParams, CreateSontaHeadData, UpdateSontaHeadData } from '@/types';
+import {
+  useSontaHeads,
+  useCreateSontaHead,
+  useUpdateSontaHead,
+  useDeleteSontaHead,
+} from '@/hooks';
+import type { SontaHead, CreateSontaHeadData, UpdateSontaHeadData } from '@/types';
 import { SontaHeadStatus } from '@/types';
 
 export default function SontaHeadsPage() {
-  const [sontaHeads, setSontaHeads] = useState<SontaHead[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [totalPages, setTotalPages] = useState(1);
+  // Filter and pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [total, setTotal] = useState(0);
-
-  // Filter state
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
@@ -35,106 +34,69 @@ export default function SontaHeadsPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedSontaHead, setSelectedSontaHead] = useState<SontaHead | null>(null);
 
-  const fetchSontaHeads = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const params: SontaHeadQueryParams = {
-        page: currentPage,
-        limit: 12,
-      };
-      if (search) params.search = search;
-      if (statusFilter && statusFilter !== 'all') {
-        params.status = statusFilter as SontaHeadStatus;
-      }
-
-      const result = await sontaHeadsService.getAll(params);
-      setSontaHeads(result.data);
-      setTotalPages(result.totalPages);
-      setTotal(result.total);
-    } catch (error) {
-      toast.error('Failed to load Sonta Heads');
-      console.error('Error fetching sonta heads:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentPage, search, statusFilter]);
-
-  useEffect(() => {
-    fetchSontaHeads();
-  }, [fetchSontaHeads]);
-
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [search, statusFilter]);
 
+  // Build query params
+  const params = {
+    page: currentPage,
+    limit: 12,
+    ...(search && { search }),
+    ...(statusFilter !== 'all' && { status: statusFilter as SontaHeadStatus }),
+  };
+
+  // Queries and Mutations
+  const { data, isLoading } = useSontaHeads(params);
+  const sontaHeads = data?.data ?? [];
+  const totalPages = data?.totalPages ?? 1;
+  const total = data?.total ?? 0;
+
+  const createMutation = useCreateSontaHead();
+  const updateMutation = useUpdateSontaHead();
+  const deleteMutation = useDeleteSontaHead();
+
+  // Handlers
   const handleCreate = async (data: Record<string, unknown>, image?: File) => {
     if (!image) {
       toast.error('Profile image is required');
       return;
     }
-    try {
-      setIsSubmitting(true);
-      const createData: CreateSontaHeadData = {
-        name: data.name as string,
-        phone: data.phone as string,
-        email: data.email as string || undefined,
-        notes: data.notes as string || undefined,
-        status: data.status as SontaHeadStatus || undefined,
-        profileImage: image,
-      };
-      await sontaHeadsService.create(createData);
-      toast.success('Sonta Head created successfully');
-      setIsFormOpen(false);
-      fetchSontaHeads();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to create Sonta Head');
-    } finally {
-      setIsSubmitting(false);
-    }
+    const createData: CreateSontaHeadData = {
+      name: data.name as string,
+      sontaName: data.sontaName as string || undefined,
+      phone: data.phone as string,
+      email: data.email as string || undefined,
+      notes: data.notes as string || undefined,
+      status: data.status as SontaHeadStatus || undefined,
+      profileImage: image,
+    };
+    await createMutation.mutateAsync(createData);
+    setIsFormOpen(false);
   };
 
   const handleUpdate = async (data: Record<string, unknown>, image?: File) => {
     if (!selectedSontaHead) return;
-    try {
-      setIsSubmitting(true);
-      const updateData: UpdateSontaHeadData = {
-        name: data.name as string,
-        phone: data.phone as string,
-        email: data.email as string,
-        notes: data.notes as string,
-        status: data.status as SontaHeadStatus,
-        profileImage: image,
-      };
-      await sontaHeadsService.update(selectedSontaHead.id, updateData);
-      toast.success('Sonta Head updated successfully');
-      setIsFormOpen(false);
-      setSelectedSontaHead(null);
-      fetchSontaHeads();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to update Sonta Head');
-    } finally {
-      setIsSubmitting(false);
-    }
+    const updateData: UpdateSontaHeadData = {
+      name: data.name as string,
+      sontaName: (data.sontaName as string) || undefined,
+      phone: data.phone as string,
+      email: (data.email as string) || undefined,
+      notes: (data.notes as string) || undefined,
+      status: data.status as SontaHeadStatus,
+      profileImage: image,
+    };
+    await updateMutation.mutateAsync({ id: selectedSontaHead.id, data: updateData });
+    setIsFormOpen(false);
+    setSelectedSontaHead(null);
   };
 
   const handleDelete = async () => {
     if (!selectedSontaHead) return;
-    try {
-      setIsSubmitting(true);
-      await sontaHeadsService.delete(selectedSontaHead.id);
-      toast.success('Sonta Head deleted successfully');
-      setIsDeleteOpen(false);
-      setSelectedSontaHead(null);
-      fetchSontaHeads();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || 'Failed to delete Sonta Head');
-    } finally {
-      setIsSubmitting(false);
-    }
+    await deleteMutation.mutateAsync(selectedSontaHead.id);
+    setIsDeleteOpen(false);
+    setSelectedSontaHead(null);
   };
 
   const openEditForm = (sontaHead: SontaHead) => {
@@ -157,7 +119,7 @@ export default function SontaHeadsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-4xl font-black tracking-tight bg-gradient-hero bg-clip-text text-transparent">
+          <h1 className="text-4xl font-black tracking-tight ">
             Sonta Heads
           </h1>
           <p className="text-lg text-muted-foreground font-medium">
@@ -193,7 +155,7 @@ export default function SontaHeadsPage() {
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[200px] h-11 border-border/50">
+              <SelectTrigger className="w-full sm:w-50 h-11 border-border/50">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
@@ -212,7 +174,7 @@ export default function SontaHeadsPage() {
               <div className="flex flex-wrap gap-2">
                 {search && (
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary">
-                    Search: "{search}"
+                    Search: &quot;{search}&quot;
                   </div>
                 )}
                 {statusFilter !== 'all' && (
@@ -232,7 +194,7 @@ export default function SontaHeadsPage() {
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground font-medium">Loading Sonta Heads...</p>
         </div>
-      ) : sontaHeads.length === 0 ? (
+      ) : sontaHeads?.length === 0 ? (
         <Card className="border-border/50 shadow-soft">
           <CardContent className="py-16">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
@@ -266,7 +228,7 @@ export default function SontaHeadsPage() {
       ) : (
         <>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {sontaHeads.map((sontaHead, index) => (
+            {sontaHeads?.map((sontaHead, index) => (
               <div
                 key={sontaHead.id}
                 className="stagger-fade-in"
@@ -325,7 +287,7 @@ export default function SontaHeadsPage() {
         }}
         onSubmit={selectedSontaHead ? handleUpdate : handleCreate}
         sontaHead={selectedSontaHead}
-        isLoading={isSubmitting}
+        isLoading={createMutation.isPending || updateMutation.isPending}
       />
 
       {/* Delete Confirmation Dialog */}
@@ -337,7 +299,7 @@ export default function SontaHeadsPage() {
         }}
         onConfirm={handleDelete}
         sontaHead={selectedSontaHead}
-        isLoading={isSubmitting}
+        isLoading={deleteMutation.isPending}
       />
     </div>
   );

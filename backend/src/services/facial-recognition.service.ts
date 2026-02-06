@@ -25,13 +25,13 @@ export class FacialRecognitionService implements OnModuleInit {
       this.logger.log(`Loading face-api.js models from: ${this.modelsPath}`);
 
       await Promise.all([
-        faceapi.nets.ssdMobilenetv1.loadFromDisk(this.modelsPath),
+        faceapi.nets.tinyFaceDetector.loadFromDisk(this.modelsPath),
         faceapi.nets.faceLandmark68Net.loadFromDisk(this.modelsPath),
         faceapi.nets.faceRecognitionNet.loadFromDisk(this.modelsPath),
       ]);
 
       this.modelsLoaded = true;
-      this.logger.log('Face-api.js models loaded successfully');
+      this.logger.log('Face-api.js models loaded successfully (TinyFaceDetector)');
     } catch (error) {
       this.logger.error('Failed to load face-api.js models', error);
       throw new Error('Facial recognition models could not be loaded');
@@ -51,7 +51,7 @@ export class FacialRecognitionService implements OnModuleInit {
     try {
       const img = await canvas.loadImage(imageBuffer);
       const detections = await faceapi
-        .detectAllFaces(img as any)
+        .detectAllFaces(img as any, new faceapi.TinyFaceDetectorOptions())
         .withFaceLandmarks();
 
       // Must have exactly one face
@@ -98,7 +98,7 @@ export class FacialRecognitionService implements OnModuleInit {
       const img = await canvas.loadImage(imageBuffer);
 
       const detection = await faceapi
-        .detectSingleFace(img as any)
+        .detectSingleFace(img as any, new faceapi.TinyFaceDetectorOptions())
         .withFaceLandmarks()
         .withFaceDescriptor();
 

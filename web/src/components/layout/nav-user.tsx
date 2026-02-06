@@ -79,7 +79,6 @@ export function NavUser() {
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground hover-scale transition-smooth"
             >
               <div className="relative">
-                <div className="absolute -inset-0.5 rounded-full gradient-hero opacity-75 blur-sm" />
                 <Avatar className="relative h-8 w-8 border-2 border-card">
                   <AvatarFallback className="bg-gradient-hero text-primary-foreground font-bold text-xs">
                     {getInitials(user.fullName)}

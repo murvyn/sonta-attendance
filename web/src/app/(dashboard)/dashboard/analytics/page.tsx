@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { analyticsService } from '@/services';
-import type { AnalyticsOverview, AttendanceTrend } from '@/types';
+import { useState } from 'react';
+import { useAnalyticsOverview, useAttendanceTrends, useExportReport } from '@/hooks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -13,55 +12,29 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { cn } from '@/lib/utils';
 
 export default function AnalyticsPage() {
-  const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
-  const [trends, setTrends] = useState<AttendanceTrend[]>([]);
-  const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
-  const [exporting, setExporting] = useState(false);
 
-  useEffect(() => {
-    loadAnalytics();
-  }, [dateRange]);
-
-  const loadAnalytics = async () => {
-    try {
-      setLoading(true);
-      const params = {
-        startDate: dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : undefined,
-        endDate: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : undefined,
-      };
-
-      const [overviewData, trendsData] = await Promise.all([
-        analyticsService.getOverview(params),
-        analyticsService.getAttendanceTrends(params),
-      ]);
-
-      setOverview(overviewData);
-      setTrends(trendsData);
-    } catch (error) {
-      console.error('Failed to load analytics:', error);
-    } finally {
-      setLoading(false);
-    }
+  // Build query params
+  const params = {
+    startDate: dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : undefined,
+    endDate: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : undefined,
   };
 
-  const handleExport = async (exportFormat: 'csv' | 'pdf') => {
-    try {
-      setExporting(true);
-      const params = {
-        format: exportFormat,
-        startDate: dateRange.from ? dateRange.from.toISOString() : undefined,
-        endDate: dateRange.to ? dateRange.to.toISOString() : undefined,
-      };
+  // Queries
+  const { data: overview, isLoading: overviewLoading } = useAnalyticsOverview(params);
+  const { data: trends = [], isLoading: trendsLoading } = useAttendanceTrends(params);
+  const loading = overviewLoading || trendsLoading;
 
-      const blob = await analyticsService.exportReport(params);
-      const filename = `attendance-report-${exportFormat}-${format(new Date(), 'yyyy-MM-dd')}.${exportFormat}`;
-      analyticsService.downloadFile(blob, filename);
-    } catch (error) {
-      console.error('Failed to export report:', error);
-    } finally {
-      setExporting(false);
-    }
+  // Mutations
+  const exportMutation = useExportReport();
+
+  const handleExport = async (exportFormat: 'csv' | 'pdf') => {
+    const exportParams = {
+      format: exportFormat,
+      startDate: dateRange.from ? dateRange.from.toISOString() : undefined,
+      endDate: dateRange.to ? dateRange.to.toISOString() : undefined,
+    };
+    await exportMutation.mutateAsync(exportParams);
   };
 
   const trendsChartData = trends.map((t) => ({
@@ -85,7 +58,7 @@ export default function AnalyticsPage() {
     <div className="space-y-8">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-4xl font-black tracking-tight bg-gradient-hero bg-clip-text text-transparent">
+          <h1 className="text-4xl font-black tracking-tight  ">
             Analytics
           </h1>
           <p className="text-lg text-muted-foreground font-medium">
@@ -127,7 +100,7 @@ export default function AnalyticsPage() {
           </Popover>
           <Button
             onClick={() => handleExport('csv')}
-            disabled={exporting}
+            disabled={exportMutation.isPending}
             variant="outline"
             className="h-11 transition-smooth hover-scale"
           >
@@ -136,7 +109,7 @@ export default function AnalyticsPage() {
           </Button>
           <Button
             onClick={() => handleExport('pdf')}
-            disabled={exporting}
+            disabled={exportMutation.isPending}
             className="h-11 transition-smooth hover-scale bg-gradient-hero"
           >
             <Download className="mr-2 h-4 w-4" />

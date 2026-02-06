@@ -53,11 +53,11 @@ const formSchema = z.object({
   scheduledDate: z.date(),
   startTime: z.string().min(1, 'Start time is required'),
   endTime: z.string().min(1, 'End time is required'),
-  lateArrivalCutoffMinutes: z.number().min(1).max(120).optional(),
+  lateArrivalCutoffMinutes: z.union([z.number().min(1).max(120), z.undefined()]).optional(),
   qrExpiryStrategy: z.nativeEnum(QrExpiryStrategy),
-  qrExpiryMinutes: z.number().min(1).optional(),
-  qrMaxScans: z.number().min(1).optional(),
-  expectedAttendees: z.number().min(1).optional(),
+  qrExpiryMinutes: z.union([z.number().min(1), z.undefined()]).optional(),
+  qrMaxScans: z.union([z.number().min(1), z.undefined()]).optional(),
+  expectedAttendees: z.union([z.number().min(1), z.undefined()]).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -96,6 +96,8 @@ export function MeetingForm({
     },
   });
 
+  console.log(meeting)
+
   useEffect(() => {
     if (meeting) {
       const startDate = new Date(meeting.scheduledStart);
@@ -112,11 +114,11 @@ export function MeetingForm({
         scheduledDate: startDate,
         startTime: format(startDate, 'HH:mm'),
         endTime: format(endDate, 'HH:mm'),
-        lateArrivalCutoffMinutes: meeting.lateArrivalCutoffMinutes,
+        lateArrivalCutoffMinutes: meeting.lateArrivalCutoffMinutes ?? undefined,
         qrExpiryStrategy: meeting.qrExpiryStrategy,
-        qrExpiryMinutes: meeting.qrExpiryMinutes,
-        qrMaxScans: meeting.qrMaxScans,
-        expectedAttendees: meeting.expectedAttendees,
+        qrExpiryMinutes: meeting.qrExpiryMinutes ?? undefined,
+        qrMaxScans: meeting.qrMaxScans ?? undefined,
+        expectedAttendees: meeting.expectedAttendees ?? undefined,
       });
     } else {
       form.reset({
@@ -312,8 +314,11 @@ export function MeetingForm({
                         type="number"
                         placeholder="e.g., 25"
                         {...field}
-                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                        value={field.value || ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          field.onChange(value === '' ? undefined : parseInt(value));
+                        }}
+                        value={field.value ?? ''}
                       />
                     </FormControl>
                     <FormMessage />
@@ -332,8 +337,11 @@ export function MeetingForm({
                         type="number"
                         placeholder="e.g., 15"
                         {...field}
-                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                        value={field.value || ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          field.onChange(value === '' ? undefined : parseInt(value));
+                        }}
+                        value={field.value ?? ''}
                       />
                     </FormControl>
                     <FormDescription>
@@ -387,8 +395,11 @@ export function MeetingForm({
                         type="number"
                         placeholder="e.g., 10"
                         {...field}
-                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                        value={field.value || ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          field.onChange(value === '' ? undefined : parseInt(value));
+                        }}
+                        value={field.value ?? ''}
                       />
                     </FormControl>
                     <FormMessage />
@@ -409,8 +420,11 @@ export function MeetingForm({
                         type="number"
                         placeholder="e.g., 30"
                         {...field}
-                        onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
-                        value={field.value || ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          field.onChange(value === '' ? undefined : parseInt(value));
+                        }}
+                        value={field.value ?? ''}
                       />
                     </FormControl>
                     <FormDescription>

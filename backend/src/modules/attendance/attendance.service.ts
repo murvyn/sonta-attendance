@@ -133,6 +133,7 @@ export class AttendanceService {
     const imagePath = path.join(uploadsDir, imageFileName);
 
     await sharp(capturedImage.buffer)
+      .rotate() // Auto-rotate based on EXIF orientation metadata
       .resize(400, 400, { fit: 'cover' })
       .jpeg({ quality: 85 })
       .toFile(imagePath);

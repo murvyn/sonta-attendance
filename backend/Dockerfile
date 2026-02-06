@@ -49,6 +49,9 @@ COPY models ./models
 # Copy init scripts if any
 COPY init.sql ./init.sql
 
+# Copy Node 24 polyfill for tfjs-node compatibility
+COPY src/polyfill.js ./polyfill.js
+
 # Create uploads directory
 RUN mkdir -p uploads/profiles uploads/qr-codes uploads/check-in-photos
 
@@ -56,4 +59,4 @@ RUN mkdir -p uploads/profiles uploads/qr-codes uploads/check-in-photos
 EXPOSE 3000
 
 # Start the application
-CMD ["node", "dist/main.js"]
+CMD ["node", "--require", "./polyfill.js", "dist/main.js"]

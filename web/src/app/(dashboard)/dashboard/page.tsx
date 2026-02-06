@@ -104,7 +104,7 @@ export default function DashboardPage() {
     <div className="space-y-8">
       {/* Welcome Header with Gradient Text */}
       <div className="space-y-2">
-        <h1 className="text-4xl font-black tracking-tight bg-gradient-hero bg-clip-text text-transparent">
+        <h1 className="text-4xl font-black tracking-tight  ">
           {getGreeting()}, {user?.fullName?.split(' ')[0] || user?.email?.split('@')[0]}!
         </h1>
         <p className="text-lg text-muted-foreground font-medium">

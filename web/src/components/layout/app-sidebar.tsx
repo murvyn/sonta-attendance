@@ -8,6 +8,7 @@ import {
   BarChart3,
   Settings,
   UserCog,
+  Command,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -16,6 +17,9 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
   SidebarRail,
 } from '@/components/ui/sidebar';
 import { NavMain, type NavMainItem } from './nav-main';
@@ -65,29 +69,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isSuperAdmin = user?.role === AdminRole.SUPER_ADMIN;
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar variant="inset" collapsible="icon" {...props}>
       <SidebarHeader>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-3 px-2 py-1 group transition-smooth"
-            >
-              {/* Logo Icon with Gradient Background */}
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-hero shadow-primary transition-smooth group-hover:scale-105 shrink-0">
-                <span className="text-lg font-black text-primary-foreground">SA</span>
-              </div>
-
-              {/* Brand Text - Hidden when collapsed */}
-              <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-                <span className="text-base font-bold text-primary leading-tight">Sonta</span>
-                <span className="text-xs font-semibold text-muted-foreground tracking-wide">
-                  ATTENDANCE
-                </span>
-              </div>
-            </Link>
-          </SidebarGroupContent>
-        </SidebarGroup>
+         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild>
+              <a href="#">
+                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                  <Command className="size-4" />
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-medium">Sonta</span>
+                  <span className="truncate text-xs">Attendance</span>
+                </div>
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
 
       <SidebarContent>
@@ -97,20 +95,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/* Admin Navigation - Only for Super Admins */}
         {isSuperAdmin && <NavSecondary items={adminNavItems} className="mt-auto" />}
 
-        {/* Version Badge */}
-        <SidebarGroup className="mt-auto">
-          <SidebarGroupContent>
-            <div className="px-2 py-3 group-data-[collapsible=icon]:hidden">
-              <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border/50 pt-3">
-                <span className="font-medium">v1.0.0</span>
-                <div className="flex items-center gap-1">
-                  <div className="h-2 w-2 rounded-full bg-success animate-status-pulse" />
-                  <span className="font-semibold">Live</span>
-                </div>
-              </div>
-            </div>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        
       </SidebarContent>
 
       <SidebarFooter>

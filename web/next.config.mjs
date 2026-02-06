@@ -13,6 +13,16 @@ const nextConfig = {
         hostname: '*.onrender.com',
         pathname: '/uploads/**',
       },
+      {
+        protocol: 'https',
+        hostname: '*.ngrok-free.dev',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.devtunnels.ms',
+        pathname: '/uploads/**',
+      },
     ],
   },
 };

@@ -50,7 +50,7 @@ export function FaceDetectionPreview({
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/facial-recognition/detect-preview`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/facial-recognition/detect-preview`, {
         method: 'POST',
         body: formData,
       });

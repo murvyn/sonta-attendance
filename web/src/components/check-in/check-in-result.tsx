@@ -73,7 +73,7 @@ export function CheckInResultDisplay({
               Face Match Confidence
             </p>
             <p className={`text-2xl font-bold text-center ${config.color}`}>
-              {(result.facialConfidenceScore * 100).toFixed(1)}%
+              {result.facialConfidenceScore.toFixed(1)}%
             </p>
           </div>
         )}

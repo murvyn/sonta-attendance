@@ -13,6 +13,7 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -27,11 +28,18 @@ import {
 import { JwtAuthGuard } from '../auth/guards';
 import { CurrentUser } from '../auth/decorators';
 import { AttendanceService } from './attendance.service';
-import { VerifyLocationDto, CheckInDto, ManualCheckInDto, ReviewPendingDto } from './dto';
+import {
+  VerifyLocationDto,
+  CheckInDto,
+  ManualCheckInDto,
+  ReviewPendingDto,
+} from './dto';
 
 @ApiTags('Attendance')
 @Controller('api/attendance')
 export class AttendanceController {
+  private readonly logger = new Logger(AttendanceController.name);
+
   constructor(private readonly attendanceService: AttendanceService) {}
 
   @Post('verify-location')
@@ -63,13 +71,51 @@ export class AttendanceController {
   @ApiResponse({ status: 403, description: 'Outside geofence' })
   @ApiResponse({ status: 409, description: 'Already checked in' })
   async checkIn(
-    @Body() dto: CheckInDto,
+    @Body() body: any,
     @UploadedFile() capturedImage: Express.Multer.File,
   ) {
-    if (!capturedImage) {
-      throw new Error('Captured image is required');
+    try {
+      this.logger.log('Check-in request received');
+      this.logger.log(`Raw body: ${JSON.stringify(body)}`);
+      this.logger.log(
+        `File: ${capturedImage ? capturedImage.originalname : 'NO FILE'}`,
+      );
+      this.logger.log(
+        `File mimetype: ${capturedImage ? capturedImage.mimetype : 'N/A'}`,
+      );
+      this.logger.log(
+        `File size: ${capturedImage ? capturedImage.size : 0} bytes`,
+      );
+
+      if (!capturedImage) {
+        this.logger.error('No captured image provided');
+        throw new Error('Captured image is required');
+      }
+
+      // Manually construct and validate DTO from FormData
+      const dto: CheckInDto = {
+        qrToken: body.qrToken,
+        latitude: parseFloat(body.latitude),
+        longitude: parseFloat(body.longitude),
+        deviceInfo: body.deviceInfo || undefined,
+      };
+
+      this.logger.log(`Processed DTO: ${JSON.stringify(dto)}`);
+      this.logger.log(
+        `Processed types - latitude: ${typeof dto.latitude}, longitude: ${typeof dto.longitude}`,
+      );
+
+      // Basic validation
+      if (!dto.qrToken || isNaN(dto.latitude) || isNaN(dto.longitude)) {
+        this.logger.error('Invalid DTO data');
+        throw new Error('Invalid check-in data');
+      }
+
+      return this.attendanceService.checkIn(dto, capturedImage);
+    } catch (error) {
+      this.logger.error('Check-in error:', error);
+      throw error;
     }
-    return this.attendanceService.checkIn(dto, capturedImage);
   }
 
   @Post('manual-check-in')
@@ -79,10 +125,7 @@ export class AttendanceController {
   @ApiResponse({ status: 201, description: 'Manual check-in successful' })
   @ApiResponse({ status: 400, description: 'Meeting not active' })
   @ApiResponse({ status: 409, description: 'Already checked in' })
-  async manualCheckIn(
-    @Body() dto: ManualCheckInDto,
-    @CurrentUser() user: any,
-  ) {
+  async manualCheckIn(@Body() dto: ManualCheckInDto, @CurrentUser() user: any) {
     return this.attendanceService.manualCheckIn(dto, user.sub);
   }
 
@@ -105,7 +148,9 @@ export class AttendanceController {
   @ApiParam({ name: 'meetingId', description: 'Meeting ID' })
   @ApiResponse({ status: 200, description: 'Meeting attendance data' })
   @ApiResponse({ status: 404, description: 'Meeting not found' })
-  async getMeetingAttendance(@Param('meetingId', ParseUUIDPipe) meetingId: string) {
+  async getMeetingAttendance(
+    @Param('meetingId', ParseUUIDPipe) meetingId: string,
+  ) {
     return this.attendanceService.getMeetingAttendance(meetingId);
   }
 
@@ -113,7 +158,11 @@ export class AttendanceController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get pending verifications' })
-  @ApiQuery({ name: 'meetingId', required: false, description: 'Filter by meeting' })
+  @ApiQuery({
+    name: 'meetingId',
+    required: false,
+    description: 'Filter by meeting',
+  })
   @ApiResponse({ status: 200, description: 'List of pending verifications' })
   async getPendingVerifications(@Query('meetingId') meetingId?: string) {
     return this.attendanceService.getPendingVerifications(meetingId);
