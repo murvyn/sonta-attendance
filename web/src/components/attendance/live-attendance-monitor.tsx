@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useMeetingAttendance } from '@/hooks/use-attendance';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import type { MeetingAttendanceData } from '@/types';
 import { toast } from 'sonner';
 import { getImageUrl } from '@/lib/utils';
 

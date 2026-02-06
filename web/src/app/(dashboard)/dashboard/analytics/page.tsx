@@ -232,7 +232,7 @@ export default function AnalyticsPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ChartContainer config={lineChartConfig} className="aspect-auto h-[250px] w-full">
+                  <ChartContainer config={lineChartConfig} className="aspect-auto h-62.5 w-full">
                     <LineChart
                       accessibilityLayer
                       data={trendsChartData}
@@ -286,7 +286,7 @@ export default function AnalyticsPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ChartContainer config={barChartConfig} className="aspect-auto h-[250px] w-full">
+                  <ChartContainer config={barChartConfig} className="aspect-auto h-62.5 w-full">
                     <BarChart accessibilityLayer data={trendsChartData}>
                       <CartesianGrid vertical={false} />
                       <XAxis
