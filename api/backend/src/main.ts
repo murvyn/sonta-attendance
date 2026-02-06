@@ -25,13 +25,6 @@ async function seedSuperAdmin(dataSource: DataSource) {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Log all incoming requests
-  app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-    console.log('Headers:', JSON.stringify(req.headers, null, 2));
-    next();
-  });
-
   // Enable CORS
   app.enableCors({
     origin: true, // Allow all origins for development
