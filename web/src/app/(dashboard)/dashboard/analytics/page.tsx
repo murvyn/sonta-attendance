@@ -2,14 +2,45 @@
 
 import { useState } from 'react';
 import { useAnalyticsOverview, useAttendanceTrends, useExportReport } from '@/hooks';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart';
 import { CalendarIcon, Download, TrendingUp, Users, Clock, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, CartesianGrid } from 'recharts';
 import { cn } from '@/lib/utils';
+
+const lineChartConfig = {
+  rate: {
+    label: "Attendance Rate (%)",
+    color: "var(--chart-1)",
+  },
+} satisfies ChartConfig;
+
+const barChartConfig = {
+  expected: {
+    label: "Expected",
+    color: "var(--chart-2)",
+  },
+  actual: {
+    label: "Actual",
+    color: "var(--chart-1)",
+  },
+} satisfies ChartConfig;
 
 export default function AnalyticsPage() {
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
@@ -58,7 +89,7 @@ export default function AnalyticsPage() {
     <div className="space-y-8">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-4xl font-black tracking-tight  ">
+          <h1 className="text-4xl font-black tracking-tight">
             Analytics
           </h1>
           <p className="text-lg text-muted-foreground font-medium">
@@ -110,7 +141,7 @@ export default function AnalyticsPage() {
           <Button
             onClick={() => handleExport('pdf')}
             disabled={exportMutation.isPending}
-            className="h-11 transition-smooth hover-scale bg-gradient-hero"
+            className="h-11 transition-smooth hover-scale"
           >
             <Download className="mr-2 h-4 w-4" />
             Export PDF
@@ -121,7 +152,7 @@ export default function AnalyticsPage() {
       {overview && (
         <>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="group overflow-hidden border-border/50 shadow-soft hover-lift transition-smooth relative bg-gradient-to-br from-blue-500/10 to-cyan-500/10">
+            <Card className="group overflow-hidden border-border/50 shadow-soft hover-lift transition-smooth">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                   Total Meetings
@@ -138,7 +169,7 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            <Card className="group overflow-hidden border-border/50 shadow-soft hover-lift transition-smooth relative bg-gradient-to-br from-green-500/10 to-emerald-500/10">
+            <Card className="group overflow-hidden border-border/50 shadow-soft hover-lift transition-smooth">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                   Avg Attendance Rate
@@ -155,7 +186,7 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            <Card className="group overflow-hidden border-border/50 shadow-soft hover-lift transition-smooth relative bg-gradient-to-br from-amber-500/10 to-orange-500/10">
+            <Card className="group overflow-hidden border-border/50 shadow-soft hover-lift transition-smooth">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                   Late Arrivals
@@ -172,7 +203,7 @@ export default function AnalyticsPage() {
               </CardContent>
             </Card>
 
-            <Card className="group overflow-hidden border-border/50 shadow-soft hover-lift transition-smooth relative bg-gradient-to-br from-purple-500/10 to-pink-500/10">
+            <Card className="group overflow-hidden border-border/50 shadow-soft hover-lift transition-smooth">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                   Manual Check-ins
@@ -192,91 +223,102 @@ export default function AnalyticsPage() {
 
           {trends.length > 0 && (
             <>
-              <Card className="border-border/50 shadow-soft overflow-hidden">
+              {/* Line Chart - Attendance Rate */}
+              <Card>
                 <CardHeader>
-                  <CardTitle className="text-xl font-bold">Attendance Trends</CardTitle>
-                  <CardDescription className="text-base">
+                  <CardTitle>Attendance Trends</CardTitle>
+                  <CardDescription>
                     Attendance rate over time
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={350}>
-                    <LineChart data={trendsChartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <ChartContainer config={lineChartConfig} className="aspect-auto h-[250px] w-full">
+                    <LineChart
+                      accessibilityLayer
+                      data={trendsChartData}
+                      margin={{
+                        left: 12,
+                        right: 12,
+                      }}
+                    >
+                      <CartesianGrid vertical={false} />
                       <XAxis
                         dataKey="date"
-                        stroke="hsl(var(--muted-foreground))"
-                        fontSize={12}
                         tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
                       />
-                      <YAxis
-                        stroke="hsl(var(--muted-foreground))"
-                        fontSize={12}
-                        tickLine={false}
+                      <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent hideLabel />}
                       />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--card))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px',
+                      <Line
+                        dataKey="rate"
+                        type="natural"
+                        stroke="var(--color-rate)"
+                        strokeWidth={2}
+                        dot={{
+                          fill: "var(--color-rate)",
+                        }}
+                        activeDot={{
+                          r: 6,
                         }}
                       />
-                      <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="rate"
-                        stroke="hsl(var(--primary))"
-                        name="Attendance Rate (%)"
-                        strokeWidth={3}
-                        dot={{ fill: 'hsl(var(--primary))', r: 4 }}
-                        activeDot={{ r: 6 }}
-                      />
                     </LineChart>
-                  </ResponsiveContainer>
+                  </ChartContainer>
                 </CardContent>
+                <CardFooter className="flex-col items-start gap-2 text-sm">
+                  <div className="flex gap-2 leading-none font-medium">
+                    {overview.averageAttendanceRate}% average attendance rate <TrendingUp className="h-4 w-4" />
+                  </div>
+                  <div className="text-muted-foreground leading-none">
+                    Showing attendance rate across {trends.length} meetings
+                  </div>
+                </CardFooter>
               </Card>
 
-              <Card className="border-border/50 shadow-soft overflow-hidden">
+              {/* Bar Chart - Expected vs Actual */}
+              <Card>
                 <CardHeader>
-                  <CardTitle className="text-xl font-bold">Expected vs Actual Attendance</CardTitle>
-                  <CardDescription className="text-base">
+                  <CardTitle>Expected vs Actual Attendance</CardTitle>
+                  <CardDescription>
                     Comparison by meeting
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={350}>
-                    <BarChart data={trendsChartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <ChartContainer config={barChartConfig} className="aspect-auto h-[250px] w-full">
+                    <BarChart accessibilityLayer data={trendsChartData}>
+                      <CartesianGrid vertical={false} />
                       <XAxis
                         dataKey="date"
-                        stroke="hsl(var(--muted-foreground))"
-                        fontSize={12}
                         tickLine={false}
+                        tickMargin={10}
+                        axisLine={false}
                       />
-                      <YAxis
-                        stroke="hsl(var(--muted-foreground))"
-                        fontSize={12}
-                        tickLine={false}
+                      <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent hideLabel />}
                       />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: 'hsl(var(--card))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px',
-                        }}
-                      />
-                      <Legend />
-                      <Bar dataKey="expected" fill="hsl(var(--muted-foreground))" name="Expected" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="actual" fill="hsl(var(--primary))" name="Actual" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="expected" fill="var(--color-expected)" radius={8} />
+                      <Bar dataKey="actual" fill="var(--color-actual)" radius={8} />
                     </BarChart>
-                  </ResponsiveContainer>
+                  </ChartContainer>
                 </CardContent>
+                <CardFooter className="flex-col items-start gap-2 text-sm">
+                  <div className="flex gap-2 leading-none font-medium">
+                    {overview.totalAttendance} total check-ins recorded <TrendingUp className="h-4 w-4" />
+                  </div>
+                  <div className="text-muted-foreground leading-none">
+                    Comparing expected vs actual attendance per meeting
+                  </div>
+                </CardFooter>
               </Card>
 
+              {/* Meeting Breakdown */}
               <Card className="border-border/50 shadow-soft overflow-hidden">
                 <CardHeader>
-                  <CardTitle className="text-xl font-bold">Meeting Breakdown</CardTitle>
-                  <CardDescription className="text-base">
+                  <CardTitle>Meeting Breakdown</CardTitle>
+                  <CardDescription>
                     Detailed attendance by meeting
                   </CardDescription>
                 </CardHeader>

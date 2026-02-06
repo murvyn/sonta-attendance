@@ -53,14 +53,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        {/* Brand Header with Gradient */}
-        <div className="relative flex h-16 items-center border-b border-border/50 px-4 bg-gradient-to-r from-primary/5 via-secondary/5 to-primary/5">
+        {/* Brand Header */}
+        <div className="relative flex h-16 items-center border-b border-border/50 px-4 bg-muted/50">
           <Link
             href="/dashboard"
             className="flex items-center gap-3 group transition-smooth"
           >
-            {/* Logo Icon with Gradient Background */}
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-hero shadow-primary transition-smooth group-hover:scale-105">
+            {/* Logo Icon */}
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary shadow-primary transition-smooth group-hover:scale-105">
               <span className="text-lg font-black text-primary-foreground">SA</span>
             </div>
 
@@ -115,10 +115,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   {/* Label */}
                   <span className="flex-1">{item.name}</span>
 
-                  {/* Hover Indicator */}
-                  {!isActive && (
-                    <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-smooth -z-10" />
-                  )}
                 </Link>
               );
             })}
@@ -166,10 +162,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     {/* Label */}
                     <span className="flex-1">{item.name}</span>
 
-                    {/* Hover Indicator */}
-                    {!isActive && (
-                      <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-secondary/0 via-secondary/5 to-secondary/0 opacity-0 group-hover:opacity-100 transition-smooth -z-10" />
-                    )}
                   </Link>
                 );
               })}

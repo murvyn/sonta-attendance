@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { format } from 'date-fns';
+import { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { format } from "date-fns";
 import {
   ArrowLeft,
   MapPin,
@@ -15,13 +15,21 @@ import {
   AlertCircle,
   Pencil,
   Trash2,
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { QrCodeDisplay, MeetingForm, MeetingDeleteDialog } from '@/components/meetings';
-import { LiveAttendanceMonitor, ManualCheckInModal, PendingVerificationModal } from '@/components/attendance';
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  QrCodeDisplay,
+  MeetingForm,
+  MeetingDeleteDialog,
+} from "@/components/meetings";
+import {
+  LiveAttendanceMonitor,
+  ManualCheckInModal,
+  PendingVerificationModal,
+} from "@/components/attendance";
 import {
   useMeeting,
   useStartMeeting,
@@ -29,22 +37,22 @@ import {
   useRegenerateQr,
   useUpdateMeeting,
   useDeleteMeeting,
-} from '@/hooks';
-import type { Meeting, CreateMeetingData, UpdateMeetingData } from '@/types';
-import { MeetingStatus } from '@/types';
+} from "@/hooks";
+import type { CreateMeetingData, UpdateMeetingData } from "@/types";
+import { MeetingStatus } from "@/types";
 
 const statusColors: Record<MeetingStatus, string> = {
-  [MeetingStatus.SCHEDULED]: 'bg-blue-100 text-blue-800',
-  [MeetingStatus.ACTIVE]: 'bg-green-100 text-green-800',
-  [MeetingStatus.ENDED]: 'bg-gray-100 text-gray-800',
-  [MeetingStatus.CANCELLED]: 'bg-red-100 text-red-800',
+  [MeetingStatus.SCHEDULED]: "bg-blue-100 text-blue-800",
+  [MeetingStatus.ACTIVE]: "bg-green-100 text-green-800",
+  [MeetingStatus.ENDED]: "bg-gray-100 text-gray-800",
+  [MeetingStatus.CANCELLED]: "bg-red-100 text-red-800",
 };
 
 const statusLabels: Record<MeetingStatus, string> = {
-  [MeetingStatus.SCHEDULED]: 'Scheduled',
-  [MeetingStatus.ACTIVE]: 'Active',
-  [MeetingStatus.ENDED]: 'Ended',
-  [MeetingStatus.CANCELLED]: 'Cancelled',
+  [MeetingStatus.SCHEDULED]: "Scheduled",
+  [MeetingStatus.ACTIVE]: "Active",
+  [MeetingStatus.ENDED]: "Ended",
+  [MeetingStatus.CANCELLED]: "Cancelled",
 };
 
 export default function MeetingDetailPage() {
@@ -54,11 +62,20 @@ export default function MeetingDetailPage() {
 
   // Dialog state
   const [manualCheckInOpen, setManualCheckInOpen] = useState(false);
-  const [selectedSontaHead, setSelectedSontaHead] = useState<any>(null);
+  const [selectedSontaHead, setSelectedSontaHead] = useState<{
+    id: string;
+    name: string;
+    sontaName?: string | undefined;
+    phone: string;
+    profileImageUrl: string;
+  } | null>(null);
   const [pendingVerificationOpen, setPendingVerificationOpen] = useState(false);
-  const [selectedPendingId, setSelectedPendingId] = useState<string | null>(null);
+  const [selectedPendingId, setSelectedPendingId] = useState<string | null>(
+    null,
+  );
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [attendanceRefreshKey, setAttendanceRefreshKey] = useState(0);
 
   // Queries and Mutations
   const { data: meeting, isLoading, error: queryError } = useMeeting(meetingId);
@@ -86,7 +103,10 @@ export default function MeetingDetailPage() {
 
   const handleUpdate = async (data: CreateMeetingData) => {
     if (!meeting) return;
-    await updateMutation.mutateAsync({ id: meeting.id, data: data as UpdateMeetingData });
+    await updateMutation.mutateAsync({
+      id: meeting.id,
+      data: data as UpdateMeetingData,
+    });
     setIsFormOpen(false);
   };
 
@@ -94,12 +114,12 @@ export default function MeetingDetailPage() {
     if (!meeting) return;
     await deleteMutation.mutateAsync(meeting.id);
     setIsDeleteOpen(false);
-    router.push('/dashboard/meetings');
+    router.push("/dashboard/meetings");
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-100">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -107,12 +127,15 @@ export default function MeetingDetailPage() {
 
   if (queryError || !meeting) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+      <div className="flex flex-col items-center justify-center min-h-100 gap-4">
         <AlertCircle className="h-12 w-12 text-muted-foreground" />
         <p className="text-muted-foreground">
-          {queryError ? 'Failed to load meeting details' : 'Meeting not found'}
+          {queryError ? "Failed to load meeting details" : "Meeting not found"}
         </p>
-        <Button variant="outline" onClick={() => router.push('/dashboard/meetings')}>
+        <Button
+          variant="outline"
+          onClick={() => router.push("/dashboard/meetings")}
+        >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Meetings
         </Button>
@@ -128,24 +151,33 @@ export default function MeetingDetailPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/dashboard/meetings')}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.push("/dashboard/meetings")}
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold tracking-tight">{meeting.title}</h1>
+              <h1 className="text-2xl font-bold tracking-tight">
+                {meeting.title}
+              </h1>
               <Badge className={statusColors[meeting.status]}>
                 {statusLabels[meeting.status]}
               </Badge>
             </div>
             {meeting.description && (
-              <p className="text-muted-foreground mt-1">{meeting.description}</p>
+              <p className="text-muted-foreground mt-1">
+                {meeting.description}
+              </p>
             )}
           </div>
         </div>
 
         <div className="flex gap-2">
-          {(meeting.status === MeetingStatus.SCHEDULED || meeting.status === MeetingStatus.ACTIVE) && (
+          {(meeting.status === MeetingStatus.SCHEDULED ||
+            meeting.status === MeetingStatus.ACTIVE) && (
             <>
               <Button
                 variant="outline"
@@ -176,7 +208,11 @@ export default function MeetingDetailPage() {
             </Button>
           )}
           {meeting.status === MeetingStatus.ACTIVE && (
-            <Button variant="destructive" onClick={handleEnd} disabled={endMutation.isPending}>
+            <Button
+              variant="destructive"
+              onClick={handleEnd}
+              disabled={endMutation.isPending}
+            >
               {endMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -200,7 +236,9 @@ export default function MeetingDetailPage() {
               <div>
                 <p className="font-medium">{meeting.locationName}</p>
                 {meeting.locationAddress && (
-                  <p className="text-sm text-muted-foreground">{meeting.locationAddress}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {meeting.locationAddress}
+                  </p>
                 )}
                 <p className="text-xs text-muted-foreground mt-1">
                   Geofence: {meeting.geofenceRadiusMeters}m radius
@@ -213,7 +251,9 @@ export default function MeetingDetailPage() {
             <div className="flex items-start gap-3">
               <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
-                <p className="font-medium">{format(startDate, 'EEEE, MMMM d, yyyy')}</p>
+                <p className="font-medium">
+                  {format(startDate, "EEEE, MMMM d, yyyy")}
+                </p>
               </div>
             </div>
 
@@ -221,16 +261,16 @@ export default function MeetingDetailPage() {
               <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
                 <p className="font-medium">
-                  {format(startDate, 'h:mm a')} - {format(endDate, 'h:mm a')}
+                  {format(startDate, "h:mm a")} - {format(endDate, "h:mm a")}
                 </p>
                 {meeting.actualStart && (
                   <p className="text-sm text-muted-foreground">
-                    Started: {format(new Date(meeting.actualStart), 'h:mm a')}
+                    Started: {format(new Date(meeting.actualStart), "h:mm a")}
                   </p>
                 )}
                 {meeting.actualEnd && (
                   <p className="text-sm text-muted-foreground">
-                    Ended: {format(new Date(meeting.actualEnd), 'h:mm a')}
+                    Ended: {format(new Date(meeting.actualEnd), "h:mm a")}
                   </p>
                 )}
               </div>
@@ -242,7 +282,9 @@ export default function MeetingDetailPage() {
                 <div className="flex items-start gap-3">
                   <Users className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
-                    <p className="font-medium">{meeting.expectedAttendees} expected attendees</p>
+                    <p className="font-medium">
+                      {meeting.expectedAttendees} expected attendees
+                    </p>
                     {meeting.lateArrivalCutoffMinutes && (
                       <p className="text-sm text-muted-foreground">
                         Late after {meeting.lateArrivalCutoffMinutes} minutes
@@ -258,13 +300,21 @@ export default function MeetingDetailPage() {
             <div>
               <p className="text-sm text-muted-foreground mb-1">QR Strategy</p>
               <p className="font-medium capitalize">
-                {meeting.qrExpiryStrategy.replace('_', ' ')}
-                {meeting.qrExpiryStrategy === 'time_based' && meeting.qrExpiryMinutes && (
-                  <span className="text-muted-foreground"> ({meeting.qrExpiryMinutes} min)</span>
-                )}
-                {meeting.qrExpiryStrategy === 'max_scans' && meeting.qrMaxScans && (
-                  <span className="text-muted-foreground"> ({meeting.qrMaxScans} scans)</span>
-                )}
+                {meeting.qrExpiryStrategy.replace("_", " ")}
+                {meeting.qrExpiryStrategy === "time_based" &&
+                  meeting.qrExpiryMinutes && (
+                    <span className="text-muted-foreground">
+                      {" "}
+                      ({meeting.qrExpiryMinutes} min)
+                    </span>
+                  )}
+                {meeting.qrExpiryStrategy === "max_scans" &&
+                  meeting.qrMaxScans && (
+                    <span className="text-muted-foreground">
+                      {" "}
+                      ({meeting.qrMaxScans} scans)
+                    </span>
+                  )}
               </p>
             </div>
 
@@ -282,15 +332,20 @@ export default function MeetingDetailPage() {
           qrCode={meeting.qrCode}
           meetingId={meeting.id}
           meetingTitle={meeting.title}
-          isActive={meeting.status === MeetingStatus.ACTIVE || meeting.status === MeetingStatus.SCHEDULED}
+          isActive={
+            meeting.status === MeetingStatus.ACTIVE ||
+            meeting.status === MeetingStatus.SCHEDULED
+          }
           onRegenerate={handleRegenerateQr}
         />
       </div>
 
-      {/* Live Attendance Monitor */}
-      {meeting.status === MeetingStatus.ACTIVE && (
+      {/* Attendance Monitor */}
+      {(meeting.status === MeetingStatus.ACTIVE || meeting.status === MeetingStatus.ENDED) && (
         <LiveAttendanceMonitor
+          key={attendanceRefreshKey}
           meetingId={meeting.id}
+          isReadOnly={meeting.status === MeetingStatus.ENDED}
           onManualCheckIn={(sontaHead) => {
             setSelectedSontaHead(sontaHead);
             setManualCheckInOpen(true);
@@ -312,7 +367,7 @@ export default function MeetingDetailPage() {
         meetingId={meeting.id}
         sontaHead={selectedSontaHead}
         onSuccess={() => {
-          // Modal will close automatically, attendance monitor will update via WebSocket
+          setAttendanceRefreshKey((k) => k + 1);
         }}
       />
 
@@ -325,7 +380,7 @@ export default function MeetingDetailPage() {
         }}
         pendingVerificationId={selectedPendingId}
         onSuccess={() => {
-          // Modal will close automatically, attendance monitor will update via WebSocket
+          setAttendanceRefreshKey((k) => k + 1);
         }}
       />
 

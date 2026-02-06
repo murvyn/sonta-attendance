@@ -58,6 +58,9 @@ const formSchema = z.object({
   qrExpiryMinutes: z.union([z.number().min(1), z.undefined()]).optional(),
   qrMaxScans: z.union([z.number().min(1), z.undefined()]).optional(),
   expectedAttendees: z.union([z.number().min(1), z.undefined()]).optional(),
+}).refine((data) => data.endTime > data.startTime, {
+  message: 'End time must be after start time',
+  path: ['endTime'],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -95,8 +98,6 @@ export function MeetingForm({
       qrExpiryStrategy: QrExpiryStrategy.UNTIL_END,
     },
   });
-
-  console.log(meeting)
 
   useEffect(() => {
     if (meeting) {

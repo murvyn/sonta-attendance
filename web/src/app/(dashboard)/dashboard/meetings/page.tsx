@@ -134,7 +134,7 @@ export default function MeetingsPage() {
         </div>
         <Button
           onClick={openCreateForm}
-          className="transition-smooth hover-scale bg-gradient-hero"
+          className="transition-smooth hover-scale "
           size="lg"
         >
           <Plus className="mr-2 h-5 w-5" />
@@ -155,7 +155,7 @@ export default function MeetingsPage() {
                 "inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-smooth",
                 "border-2",
                 isActive
-                  ? "bg-gradient-hero text-white border-transparent shadow-md scale-105"
+                  ? "bg-primary text-primary-foreground border-transparent shadow-md scale-105"
                   : "bg-card border-border/50 hover:border-primary/30 hover:bg-accent hover-scale"
               )}
             >
@@ -192,7 +192,7 @@ export default function MeetingsPage() {
               {statusFilter === 'all' && (
                 <Button
                   onClick={openCreateForm}
-                  className="mt-4 transition-smooth hover-scale bg-gradient-hero"
+                  className="mt-4 transition-smooth hover-scale "
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Create Your First Meeting

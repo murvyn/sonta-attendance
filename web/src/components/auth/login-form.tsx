@@ -178,10 +178,7 @@ export function LoginForm() {
 
               <Button
                 type="submit"
-                className={cn(
-                  'w-full h-11 font-semibold transition-smooth hover-scale',
-                  'bg-gradient-hero hover:opacity-90'
-                )}
+                className="w-full h-11 font-semibold transition-smooth hover-scale"
                 disabled={isLoading}
               >
                 {isLoading ? (

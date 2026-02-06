@@ -10,6 +10,7 @@ import type {
   AnalyticsQueryParams,
   ExportReportParams,
 } from '@/types';
+import { getErrorMessage } from '@/types/errors';
 
 // Query keys factory
 export const analyticsKeys = {
@@ -74,8 +75,8 @@ export function useExportReport() {
     onSuccess: () => {
       toast.success('Report exported successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to export report');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import type { AttendanceRecord, QrCode } from '@/types';
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -10,7 +11,7 @@ interface UseWebSocketOptions {
 
 interface AttendanceUpdateData {
   type: 'new' | 'removed';
-  attendance?: any;
+  attendance?: AttendanceRecord;
   attendanceId?: string;
 }
 
@@ -34,7 +35,7 @@ interface MeetingStatusData {
 
 interface QrRegeneratedData {
   meetingId: string;
-  qrCode: any;
+  qrCode: QrCode;
 }
 
 export function useWebSocket({ meetingId, enabled = true }: UseWebSocketOptions = {}) {
@@ -77,7 +78,6 @@ export function useWebSocket({ meetingId, enabled = true }: UseWebSocketOptions 
 
     // Connection event handlers
     socket.on('connect', () => {
-      console.log('WebSocket connected:', socket.id);
       setIsConnected(true);
 
       // Join meeting room if meetingId is provided
@@ -87,7 +87,6 @@ export function useWebSocket({ meetingId, enabled = true }: UseWebSocketOptions 
     });
 
     socket.on('disconnect', () => {
-      console.log('WebSocket disconnected');
       setIsConnected(false);
     });
 

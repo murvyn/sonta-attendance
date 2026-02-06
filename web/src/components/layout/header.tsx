@@ -83,15 +83,12 @@ export function Header({ onMenuClick }: HeaderProps) {
               variant="ghost"
               className="relative gap-2 hover-scale transition-smooth group"
             >
-              {/* Avatar with Gradient Ring */}
-              <div className="relative">
-                <div className="absolute -inset-0.5 rounded-full gradient-hero opacity-75 blur-sm group-hover:opacity-100 transition-smooth" />
-                <Avatar className="relative h-9 w-9 border-2 border-card">
-                  <AvatarFallback className="bg-gradient-hero text-primary-foreground font-bold text-sm">
-                    {getInitials(user?.fullName)}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
+              {/* Avatar */}
+              <Avatar className="h-9 w-9 border-2 border-card">
+                <AvatarFallback className="bg-primary text-primary-foreground font-bold text-sm">
+                  {getInitials(user?.fullName)}
+                </AvatarFallback>
+              </Avatar>
 
               {/* User Name (hidden on mobile) */}
               <span className="hidden md:inline-block text-sm font-semibold">
@@ -110,7 +107,7 @@ export function Header({ onMenuClick }: HeaderProps) {
                 {/* User Info */}
                 <div className="flex items-start gap-3">
                   <Avatar className="h-12 w-12 border-2 border-primary/20">
-                    <AvatarFallback className="bg-gradient-hero text-primary-foreground font-bold">
+                    <AvatarFallback className="bg-primary text-primary-foreground font-bold">
                       {getInitials(user?.fullName)}
                     </AvatarFallback>
                   </Avatar>

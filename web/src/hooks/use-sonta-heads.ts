@@ -8,6 +8,7 @@ import type {
   SontaHeadQueryParams,
   PaginatedSontaHeads,
 } from '@/types';
+import { getErrorMessage } from '@/types/errors';
 
 // Query keys factory
 export const sontaHeadKeys = {
@@ -52,8 +53,8 @@ export function useCreateSontaHead() {
       queryClient.invalidateQueries({ queryKey: sontaHeadKeys.count() });
       toast.success('Sonta Head created successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create Sonta Head');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }
@@ -69,8 +70,8 @@ export function useUpdateSontaHead() {
       queryClient.invalidateQueries({ queryKey: sontaHeadKeys.count() });
       toast.success('Sonta Head updated successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update Sonta Head');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }
@@ -84,8 +85,8 @@ export function useDeleteSontaHead() {
       queryClient.invalidateQueries({ queryKey: sontaHeadKeys.count() });
       toast.success('Sonta Head deleted successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to delete Sonta Head');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }

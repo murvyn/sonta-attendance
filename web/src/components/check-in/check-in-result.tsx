@@ -4,6 +4,7 @@ import { CheckCircle2, Clock, XCircle, AlertTriangle, ArrowLeft } from 'lucide-r
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { CheckInResult } from '@/types';
+import { getImageUrl } from '@/lib/utils';
 
 interface CheckInResultDisplayProps {
   result: CheckInResult;
@@ -73,7 +74,7 @@ export function CheckInResultDisplay({
               Face Match Confidence
             </p>
             <p className={`text-2xl font-bold text-center ${config.color}`}>
-              {result.facialConfidenceScore.toFixed(1)}%
+              {Number(result.facialConfidenceScore).toFixed(1)}%
             </p>
           </div>
         )}
@@ -83,13 +84,16 @@ export function CheckInResultDisplay({
             <div className="flex items-center gap-3">
               {result.attendance.sontaHead.profileImageUrl && (
                 <img
-                  src={result.attendance.sontaHead.profileImageUrl}
+                  src={getImageUrl(result.attendance.sontaHead.profileImageUrl)}
                   alt={result.attendance.sontaHead.name}
                   className="w-12 h-12 rounded-full object-cover"
                 />
               )}
               <div>
                 <p className="font-medium">{result.attendance.sontaHead.name}</p>
+                <p className="text-sm font-medium text-primary">
+                  {result.attendance.sontaHead.sontaName || 'No Sonta'}
+                </p>
                 <p className="text-sm text-muted-foreground">
                   Checked in at{' '}
                   {new Date(result.attendance.checkInTimestamp).toLocaleTimeString()}

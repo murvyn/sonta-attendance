@@ -13,8 +13,9 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { attendanceService } from '@/services';
+import { useManualCheckIn } from '@/hooks/use-attendance';
 import { toast } from 'sonner';
+import { getImageUrl } from '@/lib/utils';
 
 interface ManualCheckInModalProps {
   open: boolean;
@@ -23,6 +24,7 @@ interface ManualCheckInModalProps {
   sontaHead: {
     id: string;
     name: string;
+    sontaName?: string;
     phone: string;
     profileImageUrl: string;
   } | null;
@@ -37,23 +39,24 @@ export function ManualCheckInModal({
   onSuccess,
 }: ManualCheckInModalProps) {
   const [notes, setNotes] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const manualCheckIn = useManualCheckIn();
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!sontaHead) return;
 
-    setIsSubmitting(true);
-    try {
-      await attendanceService.manualCheckIn(meetingId, sontaHead.id, notes || undefined);
-      toast.success(`${sontaHead.name} checked in successfully`);
-      onSuccess?.();
-      handleClose();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to check in');
-    } finally {
-      setIsSubmitting(false);
-    }
+    manualCheckIn.mutate(
+      { meetingId, sontaHeadId: sontaHead.id, notes: notes || undefined },
+      {
+        onSuccess: () => {
+          toast.success(`${sontaHead.name} checked in successfully`);
+          onSuccess?.();
+          handleClose();
+        },
+      }
+    );
   };
+
+  const isSubmitting = manualCheckIn.isPending;
 
   const handleClose = () => {
     setNotes('');
@@ -79,12 +82,12 @@ export function ManualCheckInModal({
           {/* Member Info */}
           <div className="flex items-center gap-3 p-4 bg-accent rounded-lg">
             <Avatar className="h-12 w-12">
-              <AvatarImage src={sontaHead.profileImageUrl} />
+              <AvatarImage src={getImageUrl(sontaHead.profileImageUrl)} />
               <AvatarFallback>{sontaHead.name.charAt(0)}</AvatarFallback>
             </Avatar>
             <div>
               <p className="font-medium">{sontaHead.name}</p>
-              <p className="text-sm text-muted-foreground">{sontaHead.phone}</p>
+              <p className="text-sm text-muted-foreground">{sontaHead.sontaName || 'No Sonta'}</p>
             </div>
           </div>
 

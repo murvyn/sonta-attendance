@@ -35,7 +35,11 @@ export function NavMain({
       <SidebarGroupLabel>Main Navigation</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
-          const isActive = pathname === item.url || pathname.startsWith(item.url + '/');
+          // For exact /dashboard, only match exact path
+          // For other routes like /dashboard/meetings, also match child routes
+          const isActive = item.url === '/dashboard'
+            ? pathname === item.url
+            : pathname === item.url || pathname.startsWith(item.url + '/');
 
           return (
             <SidebarMenuItem key={item.title}>

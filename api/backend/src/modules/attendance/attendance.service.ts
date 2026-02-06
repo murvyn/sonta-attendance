@@ -27,6 +27,16 @@ const AUTO_APPROVE_THRESHOLD = 95;
 const PENDING_REVIEW_THRESHOLD = 70;
 const MAX_ATTEMPTS = 3;
 
+// Helper to normalize deviceInfo to JSON object
+function normalizeDeviceInfo(deviceInfo: any): Record<string, any> | undefined {
+  if (!deviceInfo) return undefined;
+  if (typeof deviceInfo === 'object') return deviceInfo;
+  if (typeof deviceInfo === 'string') {
+    return { userAgent: deviceInfo };
+  }
+  return { raw: String(deviceInfo) };
+}
+
 @Injectable()
 export class AttendanceService {
   constructor(
@@ -111,7 +121,7 @@ export class AttendanceService {
         result: VerificationResult.OUTSIDE_GEOFENCE,
         checkInLatitude: dto.latitude,
         checkInLongitude: dto.longitude,
-        deviceInfo: dto.deviceInfo,
+        deviceInfo: normalizeDeviceInfo(dto.deviceInfo),
         errorMessage: `Outside geofence: ${locationResult.distance}m from meeting location`,
       });
 
@@ -145,12 +155,13 @@ export class AttendanceService {
 
     if (!recognitionResult.matchedSontaHead) {
       // Log failed attempt
+      const normalizedDeviceInfo = normalizeDeviceInfo(dto.deviceInfo);
       await this.logVerificationAttempt({
         meetingId: meeting.id,
         result: VerificationResult.REJECTED,
         checkInLatitude: dto.latitude,
         checkInLongitude: dto.longitude,
-        deviceInfo: dto.deviceInfo,
+        deviceInfo: normalizedDeviceInfo,
         capturedImageUrl,
         capturedImagePath: imagePath,
         facialConfidenceScore: recognitionResult.confidence,
@@ -161,7 +172,7 @@ export class AttendanceService {
       const previousAttempts = await this.verificationAttemptRepository.count({
         where: {
           meetingId: meeting.id,
-          deviceInfo: dto.deviceInfo,
+          deviceInfo: normalizedDeviceInfo,
         },
       });
 
@@ -198,6 +209,9 @@ export class AttendanceService {
     // Determine if late
     const isLate = this.isLateArrival(meeting);
 
+    // Normalize device info once for all uses
+    const deviceInfoNormalized = normalizeDeviceInfo(dto.deviceInfo);
+
     // Log verification attempt
     await this.logVerificationAttempt({
       meetingId: meeting.id,
@@ -205,7 +219,7 @@ export class AttendanceService {
       result: confidence >= AUTO_APPROVE_THRESHOLD ? VerificationResult.SUCCESS : VerificationResult.LOW_CONFIDENCE,
       checkInLatitude: dto.latitude,
       checkInLongitude: dto.longitude,
-      deviceInfo: dto.deviceInfo,
+      deviceInfo: deviceInfoNormalized,
       capturedImageUrl,
       capturedImagePath: imagePath,
       facialConfidenceScore: confidence,
@@ -222,7 +236,7 @@ export class AttendanceService {
         isLate,
         checkInLatitude: dto.latitude,
         checkInLongitude: dto.longitude,
-        deviceInfo: dto.deviceInfo,
+        deviceInfo: deviceInfoNormalized,
       });
 
       // Emit WebSocket event for real-time update
@@ -249,7 +263,7 @@ export class AttendanceService {
         facialConfidenceScore: confidence,
         checkInLatitude: dto.latitude,
         checkInLongitude: dto.longitude,
-        deviceInfo: dto.deviceInfo,
+        deviceInfo: deviceInfoNormalized,
       });
 
       // Emit WebSocket event for pending verification
@@ -258,6 +272,7 @@ export class AttendanceService {
         sontaHead: {
           id: sontaHead.id,
           name: sontaHead.name,
+          sontaName: sontaHead.sontaName,
           phone: sontaHead.phone,
           profileImageUrl: sontaHead.profileImageUrl,
         },
@@ -407,6 +422,7 @@ export class AttendanceService {
       notCheckedIn: notCheckedIn.map((sh) => ({
         id: sh.id,
         name: sh.name,
+        sontaName: sh.sontaName,
         phone: sh.phone,
         profileImageUrl: sh.profileImageUrl,
       })),
@@ -415,6 +431,7 @@ export class AttendanceService {
         sontaHead: {
           id: p.sontaHead.id,
           name: p.sontaHead.name,
+          sontaName: p.sontaHead.sontaName,
           profileImageUrl: p.sontaHead.profileImageUrl,
         },
         capturedImageUrl: p.capturedImageUrl,
@@ -456,6 +473,7 @@ export class AttendanceService {
       sontaHead: {
         id: p.sontaHead.id,
         name: p.sontaHead.name,
+        sontaName: p.sontaHead.sontaName,
         phone: p.sontaHead.phone,
         profileImageUrl: p.sontaHead.profileImageUrl,
       },
@@ -673,6 +691,7 @@ export class AttendanceService {
       sontaHead: {
         id: sontaHead.id,
         name: sontaHead.name,
+        sontaName: sontaHead.sontaName,
         phone: sontaHead.phone,
         profileImageUrl: sontaHead.profileImageUrl,
       },

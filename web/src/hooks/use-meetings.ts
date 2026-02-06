@@ -8,8 +8,8 @@ import type {
   MeetingQueryParams,
   PaginatedMeetings,
   MeetingStatistics,
-  QrCode,
 } from '@/types';
+import { getErrorMessage } from '@/types/errors';
 
 // Query keys factory
 export const meetingKeys = {
@@ -63,8 +63,8 @@ export function useCreateMeeting() {
       queryClient.invalidateQueries({ queryKey: meetingKeys.upcoming() });
       toast.success('Meeting created successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create meeting');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }
@@ -80,8 +80,8 @@ export function useUpdateMeeting() {
       queryClient.invalidateQueries({ queryKey: meetingKeys.upcoming() });
       toast.success('Meeting updated successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update meeting');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }
@@ -95,8 +95,8 @@ export function useDeleteMeeting() {
       queryClient.invalidateQueries({ queryKey: meetingKeys.upcoming() });
       toast.success('Meeting deleted successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to delete meeting');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }
@@ -110,8 +110,8 @@ export function useStartMeeting() {
       queryClient.invalidateQueries({ queryKey: meetingKeys.detail(id) });
       toast.success('Meeting started');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to start meeting');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }
@@ -125,8 +125,8 @@ export function useEndMeeting() {
       queryClient.invalidateQueries({ queryKey: meetingKeys.detail(id) });
       toast.success('Meeting ended');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to end meeting');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }
@@ -140,8 +140,8 @@ export function useCancelMeeting() {
       queryClient.invalidateQueries({ queryKey: meetingKeys.detail(id) });
       toast.success('Meeting cancelled');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to cancel meeting');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }
@@ -154,8 +154,8 @@ export function useRegenerateQr() {
       queryClient.invalidateQueries({ queryKey: meetingKeys.detail(id) });
       toast.success('QR code regenerated');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to regenerate QR code');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }

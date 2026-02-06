@@ -35,7 +35,7 @@ import { SontaHeadStatus } from '@/types';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
-  sontaName: z.string().max(255).optional().or(z.literal('')),
+  sontaName: z.string().min(1, 'Sonta Name is required').max(255),
   phone: z.string().min(10, 'Phone must be at least 10 digits').max(15),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   notes: z.string().optional(),
@@ -249,7 +249,7 @@ export function SontaHeadForm({
               name="sontaName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Sonta Name</FormLabel>
+                  <FormLabel>Sonta Name *</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g. Sonta Alpha" {...field} />
                   </FormControl>

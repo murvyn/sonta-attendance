@@ -78,13 +78,11 @@ export function NavUser() {
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground hover-scale transition-smooth"
             >
-              <div className="relative">
-                <Avatar className="relative h-8 w-8 border-2 border-card">
-                  <AvatarFallback className="bg-gradient-hero text-primary-foreground font-bold text-xs">
-                    {getInitials(user.fullName)}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
+              <Avatar className="h-8 w-8 border-2 border-card">
+                <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">
+                  {getInitials(user.fullName)}
+                </AvatarFallback>
+              </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">{user.fullName || user.email}</span>
                 <span className="truncate text-xs text-muted-foreground">{user.email}</span>
@@ -102,7 +100,7 @@ export function NavUser() {
               <div className="flex flex-col space-y-3">
                 <div className="flex items-start gap-3">
                   <Avatar className="h-12 w-12 border-2 border-primary/20">
-                    <AvatarFallback className="bg-gradient-hero text-primary-foreground font-bold">
+                    <AvatarFallback className="bg-primary text-primary-foreground font-bold">
                       {getInitials(user.fullName)}
                     </AvatarFallback>
                   </Avatar>

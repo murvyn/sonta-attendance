@@ -1,88 +1,52 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Users, UserCheck, UserX, Clock, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { attendanceService } from '@/services';
+import { useMeetingAttendance } from '@/hooks/use-attendance';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import type { MeetingAttendanceData } from '@/types';
 import { toast } from 'sonner';
+import { getImageUrl } from '@/lib/utils';
 
 interface LiveAttendanceMonitorProps {
   meetingId: string;
-  onManualCheckIn?: (sontaHead: { id: string; name: string; phone: string; profileImageUrl: string }) => void;
+  isReadOnly?: boolean;
+  onManualCheckIn?: (sontaHead: { id: string; name: string; sontaName?: string; phone: string; profileImageUrl: string }) => void;
   onReviewPending?: (pendingId: string) => void;
 }
 
 export function LiveAttendanceMonitor({
   meetingId,
+  isReadOnly = false,
   onManualCheckIn,
   onReviewPending,
 }: LiveAttendanceMonitorProps) {
-  const [attendanceData, setAttendanceData] = useState<MeetingAttendanceData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Use React Query hook for initial data + polling
+  const {
+    data: attendanceData,
+    isLoading,
+  } = useMeetingAttendance(meetingId);
 
-  // WebSocket connection
+  // WebSocket connection for real-time toasts
   const {
     isConnected,
     attendanceUpdates,
-    pendingVerifications,
+    pendingVerifications: wsPendingVerifications,
     clearAttendanceUpdates,
     clearPendingVerifications,
-  } = useWebSocket({ meetingId, enabled: true });
+  } = useWebSocket({ meetingId, enabled: !isReadOnly });
 
-  // Load initial attendance data
-  useEffect(() => {
-    loadAttendanceData();
-  }, [meetingId]);
-
-  // Handle real-time attendance updates
+  // Show toasts for real-time updates (data refresh handled by React Query polling)
   useEffect(() => {
     if (attendanceUpdates.length > 0) {
       attendanceUpdates.forEach((update) => {
         if (update.type === 'new' && update.attendance) {
-          // Add new attendance
-          setAttendanceData((prev) => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              checkedIn: [...prev.checkedIn, update.attendance],
-              notCheckedIn: prev.notCheckedIn.filter(
-                (sh) => sh.id !== update.attendance.sontaHead.id
-              ),
-              statistics: {
-                ...prev.statistics,
-                checkedIn: prev.statistics.checkedIn + 1,
-                notCheckedIn: prev.statistics.notCheckedIn - 1,
-                attendanceRate: ((prev.statistics.checkedIn + 1) / prev.statistics.totalExpected) * 100,
-                lateArrivals: prev.statistics.lateArrivals + (update.attendance.isLate ? 1 : 0),
-                manualCheckIns: prev.statistics.manualCheckIns + (update.attendance.checkInMethod === 'manual_admin' ? 1 : 0),
-              },
-            };
-          });
           toast.success(`${update.attendance.sontaHead.name} checked in!`);
-        } else if (update.type === 'removed' && update.attendanceId) {
-          // Remove attendance
-          setAttendanceData((prev) => {
-            if (!prev) return prev;
-            const removed = prev.checkedIn.find((a) => a.id === update.attendanceId);
-            if (!removed) return prev;
-
-            return {
-              ...prev,
-              checkedIn: prev.checkedIn.filter((a) => a.id !== update.attendanceId),
-              notCheckedIn: [...prev.notCheckedIn, removed.sontaHead],
-              statistics: {
-                ...prev.statistics,
-                checkedIn: prev.statistics.checkedIn - 1,
-                notCheckedIn: prev.statistics.notCheckedIn + 1,
-                attendanceRate: ((prev.statistics.checkedIn - 1) / prev.statistics.totalExpected) * 100,
-              },
-            };
-          });
+        } else if (update.type === 'removed') {
           toast.info('Attendance record removed');
         }
       });
@@ -90,30 +54,15 @@ export function LiveAttendanceMonitor({
     }
   }, [attendanceUpdates, clearAttendanceUpdates]);
 
-  // Handle real-time pending verifications
+  // Show toasts for pending verifications
   useEffect(() => {
-    if (pendingVerifications.length > 0) {
-      pendingVerifications.forEach((pending) => {
+    if (wsPendingVerifications.length > 0) {
+      wsPendingVerifications.forEach((pending) => {
         toast.warning(`New pending verification for ${pending.sontaHead.name}`);
-        // Reload attendance data to get the updated pending list with full data
-        loadAttendanceData();
       });
       clearPendingVerifications();
     }
-  }, [pendingVerifications, clearPendingVerifications]);
-
-  const loadAttendanceData = async () => {
-    setIsLoading(true);
-    try {
-      const data = await attendanceService.getMeetingAttendance(meetingId);
-      setAttendanceData(data);
-    } catch (error) {
-      toast.error('Failed to load attendance data');
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [wsPendingVerifications, clearPendingVerifications]);
 
   if (isLoading) {
     return (
@@ -136,14 +85,16 @@ export function LiveAttendanceMonitor({
   return (
     <div className="space-y-6">
       {/* Connection Status */}
-      <div className="flex items-center gap-2">
-        <div
-          className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
-        />
-        <span className="text-sm text-muted-foreground">
-          {isConnected ? 'Live updates active' : 'Reconnecting...'}
-        </span>
-      </div>
+      {!isReadOnly && (
+        <div className="flex items-center gap-2">
+          <div
+            className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
+          />
+          <span className="text-sm text-muted-foreground">
+            {isConnected ? 'Live updates active' : 'Reconnecting...'}
+          </span>
+        </div>
+      )}
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -233,7 +184,7 @@ export function LiveAttendanceMonitor({
                 >
                   <div className="flex items-center gap-3">
                     <Avatar>
-                      <AvatarImage src={p.sontaHead.profileImageUrl} />
+                      <AvatarImage src={getImageUrl(p.sontaHead.profileImageUrl)} />
                       <AvatarFallback>
                         {p.sontaHead.name.charAt(0)}
                       </AvatarFallback>
@@ -241,17 +192,19 @@ export function LiveAttendanceMonitor({
                     <div>
                       <p className="font-medium">{p.sontaHead.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        Confidence: {p.facialConfidenceScore?.toFixed(1)}%
+                        {p.sontaHead.sontaName || 'No Sonta'} • {Number(p.facialConfidenceScore)?.toFixed(1)}%
                       </p>
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onReviewPending?.(p.id)}
-                  >
-                    Review
-                  </Button>
+                  {!isReadOnly && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onReviewPending?.(p.id)}
+                    >
+                      Review
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
@@ -278,7 +231,7 @@ export function LiveAttendanceMonitor({
                 >
                   <div className="flex items-center gap-3">
                     <Avatar>
-                      <AvatarImage src={attendance.sontaHead.profileImageUrl} />
+                      <AvatarImage src={getImageUrl(attendance.sontaHead.profileImageUrl)} />
                       <AvatarFallback>
                         {attendance.sontaHead.name.charAt(0)}
                       </AvatarFallback>
@@ -286,7 +239,7 @@ export function LiveAttendanceMonitor({
                     <div>
                       <p className="font-medium">{attendance.sontaHead.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {new Date(attendance.checkInTimestamp).toLocaleTimeString()}
+                        {attendance.sontaHead.sontaName || 'No Sonta'}
                       </p>
                     </div>
                   </div>
@@ -301,7 +254,7 @@ export function LiveAttendanceMonitor({
                     )}
                     {attendance.facialConfidenceScore && (
                       <span className="text-sm text-muted-foreground">
-                        {attendance.facialConfidenceScore.toFixed(0)}%
+                        {Number(attendance.facialConfidenceScore).toFixed(0)}%
                       </span>
                     )}
                   </div>
@@ -331,21 +284,23 @@ export function LiveAttendanceMonitor({
                 >
                   <div className="flex items-center gap-3">
                     <Avatar>
-                      <AvatarImage src={sontaHead.profileImageUrl} />
+                      <AvatarImage src={getImageUrl(sontaHead.profileImageUrl)} />
                       <AvatarFallback>{sontaHead.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div>
                       <p className="font-medium">{sontaHead.name}</p>
-                      <p className="text-sm text-muted-foreground">{sontaHead.phone}</p>
+                      <p className="text-sm text-muted-foreground">{sontaHead.sontaName || 'No Sonta'}</p>
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onManualCheckIn?.(sontaHead)}
-                  >
-                    Manual Check-in
-                  </Button>
+                  {!isReadOnly && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onManualCheckIn?.(sontaHead)}
+                    >
+                      Manual Check-in
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>

@@ -59,16 +59,10 @@ export function SontaHeadCard({ sontaHead, onEdit, onDelete }: SontaHeadCardProp
     <Card className="group overflow-hidden border-border/50 shadow-soft hover-lift transition-smooth">
       <CardContent className="p-0">
         <div className="flex items-start gap-4 p-5">
-          {/* Profile Image with Gradient Ring */}
+          {/* Profile Image */}
           <div className="relative shrink-0">
-            {/* Gradient Ring */}
-            <div className={cn(
-              "absolute -inset-1 rounded-full gradient-primary opacity-75 blur-sm transition-smooth",
-              sontaHead.status === SontaHeadStatus.ACTIVE && "animate-status-pulse"
-            )} />
-
             {/* Image Container */}
-            <div className="relative h-16 w-16 overflow-hidden rounded-full border-2 border-card bg-muted group-hover:scale-105 transition-smooth">
+            <div className="relative h-16 w-16 overflow-hidden rounded-full border-2 border-border bg-muted group-hover:scale-105 transition-smooth">
               <Image
                 src={imageUrl}
                 alt={sontaHead.name}

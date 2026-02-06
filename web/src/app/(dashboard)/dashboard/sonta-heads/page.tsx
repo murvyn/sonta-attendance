@@ -133,7 +133,7 @@ export default function SontaHeadsPage() {
         </div>
         <Button
           onClick={openCreateForm}
-          className="transition-smooth hover-scale bg-gradient-hero"
+          className="transition-smooth hover-scale "
           size="lg"
         >
           <Plus className="mr-2 h-5 w-5" />
@@ -216,7 +216,7 @@ export default function SontaHeadsPage() {
               {!(search || statusFilter !== 'all') && (
                 <Button
                   onClick={openCreateForm}
-                  className="mt-4 transition-smooth hover-scale bg-gradient-hero"
+                  className="mt-4 transition-smooth hover-scale "
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Add Your First Sonta Head

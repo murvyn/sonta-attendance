@@ -2,13 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { attendanceService } from '@/services/attendance.service';
 import type {
-  LocationVerificationResult,
-  CheckInResult,
   MeetingAttendanceData,
   PendingVerificationRecord,
-  AttendanceRecord,
-  QrValidationForCheckIn,
 } from '@/types';
+import { getErrorMessage } from '@/types/errors';
 
 // Query keys factory
 export const attendanceKeys = {
@@ -47,8 +44,8 @@ export function useVerifyLocation() {
       latitude: number;
       longitude: number;
     }) => attendanceService.verifyLocation(meetingId, latitude, longitude),
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Location verification failed');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }
@@ -82,8 +79,8 @@ export function useCheckIn() {
         toast.success('Check-in submitted for review');
       }
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Check-in failed');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }
@@ -107,8 +104,8 @@ export function useManualCheckIn() {
       });
       toast.success('Manual check-in recorded');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to record check-in');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }
@@ -124,8 +121,8 @@ export function useRemoveAttendance() {
       });
       toast.success('Attendance removed');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to remove attendance');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }
@@ -144,8 +141,8 @@ export function useApprovePendingVerification() {
       }
       toast.success('Verification approved');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to approve verification');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }
@@ -159,8 +156,8 @@ export function useRejectPendingVerification() {
       queryClient.invalidateQueries({ queryKey: attendanceKeys.pending(variables.meetingId) });
       toast.success('Verification rejected');
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to reject verification');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error));
     },
   });
 }

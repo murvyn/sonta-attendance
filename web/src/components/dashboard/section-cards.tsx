@@ -9,8 +9,6 @@ export interface StatCard {
   value: string | number;
   description: string;
   icon: LucideIcon;
-  gradient: string;
-  bgGradient: string;
   iconBg: string;
   iconColor: string;
 }
@@ -22,8 +20,7 @@ export function SectionCards({ cards }: { cards: StatCard[] }) {
         <Card
           key={card.title}
           className={cn(
-            'group overflow-hidden border-border/50 shadow-soft hover-lift transition-smooth relative',
-            card.bgGradient,
+            'group overflow-hidden border-border/50 shadow-soft hover-lift transition-smooth',
             `stagger-delay-${index + 1}`
           )}
         >
@@ -46,14 +43,6 @@ export function SectionCards({ cards }: { cards: StatCard[] }) {
               <p className="text-4xl font-black tracking-tight">{card.value}</p>
               <p className="text-xs text-muted-foreground font-medium">{card.description}</p>
             </div>
-
-            {/* Subtle gradient overlay */}
-            <div
-              className={cn(
-                'absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-5 transition-smooth pointer-events-none',
-                card.gradient
-              )}
-            />
           </CardContent>
         </Card>
       ))}

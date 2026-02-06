@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Users,
   Calendar,
@@ -18,10 +19,58 @@ import { cn } from '@/lib/utils';
 import { SectionCards, type StatCard } from '@/components/dashboard/section-cards';
 import { ChartAreaInteractive } from '@/components/dashboard/chart-area-interactive';
 import { DataTable } from '@/components/dashboard/data-table';
-import dashboardData from './data.json';
+import { useAnalyticsOverview, useAttendanceTrends } from '@/hooks/use-analytics';
+import { useSontaHeadsCount } from '@/hooks/use-sonta-heads';
+import { useMeetings } from '@/hooks/use-meetings';
+import { usePendingVerifications } from '@/hooks/use-attendance';
+import { MeetingStatus } from '@/types';
+
+function SectionCardsSkeleton() {
+  return (
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      {[...Array(4)].map((_, i) => (
+        <Card key={i} className="border-border/50 shadow-soft">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <Skeleton className="h-12 w-12 rounded-xl" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-10 w-16" />
+              <Skeleton className="h-3 w-32" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function ChartSkeleton() {
+  return (
+    <Card className="border-border/50 shadow-soft">
+      <CardContent className="p-6">
+        <div className="space-y-4">
+          <div className="flex justify-between">
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+          <Skeleton className="h-[250px] w-full" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
+
+  // Fetch real data from APIs
+  const { data: overview, isLoading: overviewLoading } = useAnalyticsOverview();
+  const { data: trends, isLoading: trendsLoading } = useAttendanceTrends();
+  const { data: sontaHeadsCount } = useSontaHeadsCount();
+  const { data: meetingsData } = useMeetings({ status: MeetingStatus.ACTIVE });
+  const { data: pendingVerifications } = usePendingVerifications();
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -30,44 +79,46 @@ export default function DashboardPage() {
     return 'Good evening';
   };
 
+  // Transform trends data for chart
+  const chartData = trends?.map(t => ({
+    date: t.date,
+    checkIns: t.actual,
+    approvalRate: Math.round(t.rate * 100),
+  })) || [];
+
+  // Build stats from real API data
+  const activeMeetingsCount = meetingsData?.data?.filter(m => m.status === MeetingStatus.ACTIVE).length ?? 0;
+
   const stats: StatCard[] = [
     {
       title: 'Total Sonta Heads',
-      value: dashboardData.stats.totalSontaHeads,
+      value: sontaHeadsCount ?? overview?.totalSontaHeads ?? 0,
       icon: Users,
       description: 'Registered members',
-      gradient: 'from-blue-500 to-cyan-500',
-      bgGradient: 'bg-gradient-to-br from-blue-500/10 to-cyan-500/10',
       iconBg: 'bg-blue-500/10',
       iconColor: 'text-blue-600 dark:text-blue-400',
     },
     {
       title: 'Active Meetings',
-      value: dashboardData.stats.activeMeetings,
+      value: activeMeetingsCount,
       icon: Calendar,
       description: 'Currently in progress',
-      gradient: 'from-green-500 to-emerald-500',
-      bgGradient: 'bg-gradient-to-br from-green-500/10 to-emerald-500/10',
       iconBg: 'bg-green-500/10',
       iconColor: 'text-green-600 dark:text-green-400',
     },
     {
-      title: 'Check-ins Today',
-      value: dashboardData.stats.checkInsToday,
+      title: 'Total Check-ins',
+      value: overview?.totalAttendance ?? 0,
       icon: CheckCircle,
       description: 'Successful verifications',
-      gradient: 'from-purple-500 to-pink-500',
-      bgGradient: 'bg-gradient-to-br from-purple-500/10 to-pink-500/10',
       iconBg: 'bg-purple-500/10',
       iconColor: 'text-purple-600 dark:text-purple-400',
     },
     {
       title: 'Pending Reviews',
-      value: dashboardData.stats.pendingReviews,
+      value: pendingVerifications?.length ?? 0,
       icon: AlertCircle,
       description: 'Awaiting approval',
-      gradient: 'from-amber-500 to-orange-500',
-      bgGradient: 'bg-gradient-to-br from-amber-500/10 to-orange-500/10',
       iconBg: 'bg-amber-500/10',
       iconColor: 'text-amber-600 dark:text-amber-400',
     },
@@ -100,11 +151,13 @@ export default function DashboardPage() {
     },
   ];
 
+  const isLoading = overviewLoading;
+
   return (
     <div className="space-y-8">
-      {/* Welcome Header with Gradient Text */}
+      {/* Welcome Header */}
       <div className="space-y-2">
-        <h1 className="text-4xl font-black tracking-tight  ">
+        <h1 className="text-4xl font-black tracking-tight">
           {getGreeting()}, {user?.fullName?.split(' ')[0] || user?.email?.split('@')[0]}!
         </h1>
         <p className="text-lg text-muted-foreground font-medium">
@@ -112,14 +165,14 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Enhanced Stats Cards */}
-      <SectionCards cards={stats} />
+      {/* Stats Cards */}
+      {isLoading ? <SectionCardsSkeleton /> : <SectionCards cards={stats} />}
 
       {/* Attendance Trend Chart */}
-      <ChartAreaInteractive data={dashboardData.attendanceTrend} />
+      {trendsLoading ? <ChartSkeleton /> : <ChartAreaInteractive data={chartData} />}
 
-      {/* Recent Check-ins Table */}
-      <DataTable data={dashboardData.recentCheckIns} />
+      {/* Recent Check-ins Table - empty for now, will be populated when we add recent check-ins API */}
+      <DataTable data={[]} />
 
       {/* Quick Actions Grid */}
       <div className="space-y-4">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import {
   CheckInResultDisplay,
 } from '@/components/check-in';
 import { attendanceService } from '@/services';
-import type { CheckInResult, QrValidationForCheckIn } from '@/types';
+import type { CheckInResult, QrValidationForCheckIn, MeetingStatus } from '@/types';
 import { toast } from 'sonner';
 
 type CheckInStep = 'scan' | 'validate-qr' | 'location' | 'camera' | 'submitting' | 'result';
@@ -27,51 +27,40 @@ export default function CheckInPage() {
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(
     null
   );
-  const [capturedImage, setCapturedImage] = useState<File | null>(null);
   const [checkInResult, setCheckInResult] = useState<CheckInResult | null>(null);
   const [attemptsRemaining, setAttemptsRemaining] = useState<number>(3);
-  const [isLoading, setIsLoading] = useState(false);
+
+  const validateQrToken = useCallback(async (token: string) => {
+    try {
+      const result = await attendanceService.validateQrForCheckIn(token);
+
+      if (!result.valid || !result.meeting) {
+        toast.error('Invalid or expired QR code');
+        setStep('scan');
+        return;
+      }
+
+      if (result.meeting.status !== ('active' as MeetingStatus)) {
+        toast.error(`Meeting is ${result.meeting.status}. Only active meetings allow check-in.`);
+        setStep('scan');
+        return;
+      }
+
+      setMeetingData(result.meeting);
+      setQrToken(token);
+      setStep('location');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to validate QR code');
+      setStep('scan');
+    }
+  }, []);
 
   // Validate QR token on mount if provided via URL
   useEffect(() => {
     if (tokenFromUrl) {
       validateQrToken(tokenFromUrl);
     }
-  }, [tokenFromUrl]);
-
-  const validateQrToken = async (token: string) => {
-    setIsLoading(true);
-    try {
-      console.log('Validating QR token:', token);
-      const result = await attendanceService.validateQrForCheckIn(token);
-      console.log('QR validation result:', result);
-
-      if (!result.valid || !result.meeting) {
-        console.error('QR validation failed:', result);
-        toast.error('Invalid or expired QR code');
-        setStep('scan');
-        return;
-      }
-
-      if (result.meeting.status !== 'active') {
-        console.warn('Meeting is not active:', result.meeting.status);
-        toast.error(`Meeting is ${result.meeting.status}. Only active meetings allow check-in.`);
-        setStep('scan');
-        return;
-      }
-
-      console.log('QR validation successful, meeting data:', result.meeting);
-      setMeetingData(result.meeting);
-      setQrToken(token);
-      setStep('location');
-    } catch (error) {
-      console.error('Error validating QR code:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to validate QR code');
-      setStep('scan');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [tokenFromUrl, validateQrToken]);
 
   const handleQrScan = (token: string) => {
     setQrToken(token);
@@ -85,7 +74,6 @@ export default function CheckInPage() {
   };
 
   const handleImageCapture = (imageFile: File) => {
-    setCapturedImage(imageFile);
     setStep('submitting');
     submitCheckIn(imageFile);
   };
@@ -129,7 +117,6 @@ export default function CheckInPage() {
   };
 
   const handleRetry = () => {
-    setCapturedImage(null);
     setCheckInResult(null);
     setStep('camera');
   };
@@ -142,14 +129,13 @@ export default function CheckInPage() {
     setQrToken('');
     setMeetingData(null);
     setUserLocation(null);
-    setCapturedImage(null);
     setCheckInResult(null);
     setAttemptsRemaining(3);
     setStep('scan');
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
+    <div className="min-h-screen bg-background py-8 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">

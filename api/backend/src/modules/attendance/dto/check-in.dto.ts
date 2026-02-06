@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional, Min, Max, IsObject } from 'class-validator';
+import { IsString, IsNumber, IsOptional, Min, Max } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CheckInDto {
@@ -18,8 +18,7 @@ export class CheckInDto {
   @Max(180)
   longitude: number;
 
-  @ApiPropertyOptional({ description: 'Device information' })
-  @IsObject()
+  @ApiPropertyOptional({ description: 'Device information (string or object)' })
   @IsOptional()
-  deviceInfo?: Record<string, any>;
+  deviceInfo?: string | Record<string, any>;
 }

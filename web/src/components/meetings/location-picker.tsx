@@ -1,31 +1,24 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import dynamic from 'next/dynamic';
-import { useMapEvents } from 'react-leaflet';
-import { MapPin, Search, Loader2 } from 'lucide-react';
+import { useState, useCallback, useRef } from 'react';
+import { GoogleMap, Marker, Circle, Autocomplete, useJsApiLoader } from '@react-google-maps/api';
+import { MapPin, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 
-// Dynamically import map component to avoid SSR issues
-const MapContainer = dynamic(
-  () => import('react-leaflet').then((mod) => mod.MapContainer),
-  { ssr: false }
-);
-const TileLayer = dynamic(
-  () => import('react-leaflet').then((mod) => mod.TileLayer),
-  { ssr: false }
-);
-const Marker = dynamic(
-  () => import('react-leaflet').then((mod) => mod.Marker),
-  { ssr: false }
-);
-const Circle = dynamic(
-  () => import('react-leaflet').then((mod) => mod.Circle),
-  { ssr: false }
-);
+const libraries: ('places')[] = ['places'];
+
+const mapContainerStyle = {
+  width: '100%',
+  height: '300px',
+};
+
+const defaultCenter = {
+  lat: 5.6037,
+  lng: -0.1870,
+};
 
 interface LocationPickerProps {
   latitude: number;
@@ -42,15 +35,6 @@ interface LocationPickerProps {
   }) => void;
 }
 
-function MapClickHandler({ onClick }: { onClick: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click: (e) => {
-      onClick(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
-}
-
 export function LocationPicker({
   latitude,
   longitude,
@@ -59,64 +43,39 @@ export function LocationPicker({
   locationAddress,
   onChange,
 }: LocationPickerProps) {
-  const [isClient, setIsClient] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
-  useEffect(() => {
-    setIsClient(true);
-    // Fix default marker icon
-    import('leaflet').then((L) => {
-      // Import CSS
-      require('leaflet/dist/leaflet.css');
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    libraries,
+  });
+
+  const handleMapClick = useCallback((e: google.maps.MapMouseEvent) => {
+    if (e.latLng) {
+      onChange({
+        latitude: e.latLng.lat(),
+        longitude: e.latLng.lng(),
+        radius,
+        locationName,
+        locationAddress,
       });
-    });
-  }, []);
-
-  const handleMapClick = useCallback((lat: number, lng: number) => {
-    onChange({
-      latitude: lat,
-      longitude: lng,
-      radius,
-      locationName,
-      locationAddress,
-    });
+    }
   }, [radius, locationName, locationAddress, onChange]);
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-
-    setIsSearching(true);
-    setSearchError(null);
-
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1`
-      );
-      const data = await response.json();
-
-      if (data.length > 0) {
-        const result = data[0];
+  const handlePlaceChanged = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      if (place.geometry?.location) {
         onChange({
-          latitude: parseFloat(result.lat),
-          longitude: parseFloat(result.lon),
+          latitude: place.geometry.location.lat(),
+          longitude: place.geometry.location.lng(),
           radius,
-          locationName: result.display_name.split(',')[0],
-          locationAddress: result.display_name,
+          locationName: place.name || place.formatted_address?.split(',')[0] || locationName,
+          locationAddress: place.formatted_address || locationAddress,
         });
-      } else {
-        setSearchError('Location not found');
+        setSearchError(null);
       }
-    } catch {
-      setSearchError('Search failed. Please try again.');
-    } finally {
-      setIsSearching(false);
     }
   };
 
@@ -131,39 +90,52 @@ export function LocationPicker({
             locationName: locationName || 'Current Location',
             locationAddress,
           });
+          setSearchError(null);
         },
-        (error) => {
+        () => {
           setSearchError('Unable to get current location');
         }
       );
     }
   };
 
-  if (!isClient) {
+  if (loadError) {
     return (
-      <div className="h-[300px] rounded-md border bg-muted flex items-center justify-center">
+      <div className="h-75 rounded-md border bg-muted flex items-center justify-center">
+        <p className="text-sm text-red-500">Failed to load Google Maps</p>
+      </div>
+    );
+  }
+
+  if (!isLoaded) {
+    return (
+      <div className="h-75 rounded-md border bg-muted flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
+  const center = latitude && longitude
+    ? { lat: latitude, lng: longitude }
+    : defaultCenter;
+
   return (
     <div className="space-y-4">
-      {/* Search */}
+      {/* Search with Google Places Autocomplete */}
       <div className="flex gap-2">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search for a location..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            className="pl-9"
-          />
+        <div className="flex-1">
+          <Autocomplete
+            onLoad={(autocomplete) => {
+              autocompleteRef.current = autocomplete;
+            }}
+            onPlaceChanged={handlePlaceChanged}
+          >
+            <Input
+              placeholder="Search for a location..."
+              className="w-full"
+            />
+          </Autocomplete>
         </div>
-        <Button type="button" variant="outline" onClick={handleSearch} disabled={isSearching}>
-          {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
-        </Button>
         <Button type="button" variant="outline" onClick={handleUseCurrentLocation}>
           <MapPin className="h-4 w-4" />
         </Button>
@@ -173,29 +145,36 @@ export function LocationPicker({
         <p className="text-sm text-red-500">{searchError}</p>
       )}
 
-      {/* Map */}
-      <div className="h-[300px] rounded-md border overflow-hidden">
-        <MapContainer
-          center={[latitude || 5.6037, longitude || -0.1870]}
+      {/* Google Map */}
+      <div className="rounded-md border overflow-hidden">
+        <GoogleMap
+          mapContainerStyle={mapContainerStyle}
+          center={center}
           zoom={latitude ? 15 : 10}
-          style={{ height: '100%', width: '100%' }}
+          onClick={handleMapClick}
+          options={{
+            streetViewControl: false,
+            mapTypeControl: false,
+            fullscreenControl: false,
+          }}
         >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
           {latitude && longitude && (
             <>
-              <Marker position={[latitude, longitude]} />
+              <Marker position={{ lat: latitude, lng: longitude }} />
               <Circle
-                center={[latitude, longitude]}
+                center={{ lat: latitude, lng: longitude }}
                 radius={radius}
-                pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.2 }}
+                options={{
+                  strokeColor: '#3b82f6',
+                  strokeOpacity: 0.8,
+                  strokeWeight: 2,
+                  fillColor: '#3b82f6',
+                  fillOpacity: 0.2,
+                }}
               />
             </>
           )}
-          <MapClickHandler onClick={handleMapClick} />
-        </MapContainer>
+        </GoogleMap>
       </div>
 
       {/* Coordinates display */}

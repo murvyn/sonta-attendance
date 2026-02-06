@@ -1,21 +1,23 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { useState } from "react";
+import Image from "next/image";
+import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { attendanceService } from '@/services';
-import { toast } from 'sonner';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { usePendingVerifications, useApprovePendingVerification, useRejectPendingVerification } from "@/hooks/use-attendance";
+import { getImageUrl } from "@/lib/utils";
+import type { PendingVerificationRecord } from "@/types/attendance";
 
 interface PendingVerificationModalProps {
   open: boolean;
@@ -30,73 +32,47 @@ export function PendingVerificationModal({
   pendingVerificationId,
   onSuccess,
 }: PendingVerificationModalProps) {
-  const [pending, setPending] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState("");
 
-  useEffect(() => {
-    if (open && pendingVerificationId) {
-      loadPendingVerification();
-    }
-  }, [open, pendingVerificationId]);
+  const { data: allPending, isLoading } = usePendingVerifications();
+  const approveMutation = useApprovePendingVerification();
+  const rejectMutation = useRejectPendingVerification();
 
-  const loadPendingVerification = async () => {
-    if (!pendingVerificationId) return;
+  const pending: PendingVerificationRecord | null =
+    allPending?.find((p) => p.id === pendingVerificationId) ?? null;
 
-    setIsLoading(true);
-    try {
-      const allPending = await attendanceService.getPendingVerifications();
-      const found = allPending.find((p) => p.id === pendingVerificationId);
-      if (found) {
-        setPending(found);
-      } else {
-        toast.error('Pending verification not found');
-        onClose();
+  const isSubmitting = approveMutation.isPending || rejectMutation.isPending;
+
+  const handleApprove = () => {
+    if (!pendingVerificationId || !pending) return;
+
+    approveMutation.mutate(
+      { id: pendingVerificationId, meetingId: pending.meeting.id },
+      {
+        onSuccess: () => {
+          onSuccess?.();
+          handleClose();
+        },
       }
-    } catch (error) {
-      toast.error('Failed to load pending verification');
-      onClose();
-    } finally {
-      setIsLoading(false);
-    }
+    );
   };
 
-  const handleApprove = async () => {
-    if (!pendingVerificationId) return;
+  const handleReject = () => {
+    if (!pendingVerificationId || !pending) return;
 
-    setIsSubmitting(true);
-    try {
-      await attendanceService.approvePendingVerification(pendingVerificationId);
-      toast.success('Check-in approved');
-      onSuccess?.();
-      handleClose();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to approve');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleReject = async () => {
-    if (!pendingVerificationId) return;
-
-    setIsSubmitting(true);
-    try {
-      await attendanceService.rejectPendingVerification(pendingVerificationId, notes || undefined);
-      toast.success('Check-in rejected');
-      onSuccess?.();
-      handleClose();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to reject');
-    } finally {
-      setIsSubmitting(false);
-    }
+    rejectMutation.mutate(
+      { id: pendingVerificationId, reason: notes || undefined, meetingId: pending.meeting.id },
+      {
+        onSuccess: () => {
+          onSuccess?.();
+          handleClose();
+        },
+      }
+    );
   };
 
   const handleClose = () => {
-    setPending(null);
-    setNotes('');
+    setNotes("");
     onClose();
   };
 
@@ -119,16 +95,22 @@ export function PendingVerificationModal({
             {/* Member Info */}
             <div className="flex items-center gap-3 p-4 bg-accent rounded-lg">
               <Avatar className="h-12 w-12">
-                <AvatarImage src={pending.sontaHead.profileImageUrl} />
-                <AvatarFallback>{pending.sontaHead.name.charAt(0)}</AvatarFallback>
+                <AvatarImage
+                  src={getImageUrl(pending.sontaHead.profileImageUrl)}
+                />
+                <AvatarFallback>
+                  {pending.sontaHead.name.charAt(0)}
+                </AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <p className="font-medium">{pending.sontaHead.name}</p>
-                <p className="text-sm text-muted-foreground">{pending.sontaHead.phone}</p>
+                <p className="text-sm text-muted-foreground">
+                  {pending.sontaHead.sontaName || "No Sonta"}
+                </p>
               </div>
               {pending.facialConfidenceScore && (
                 <Badge variant="outline">
-                  {pending.facialConfidenceScore.toFixed(1)}% Match
+                  {Number(pending.facialConfidenceScore).toFixed(1)}% Match
                 </Badge>
               )}
             </div>
@@ -138,20 +120,24 @@ export function PendingVerificationModal({
               <div className="space-y-2">
                 <Label>Profile Photo</Label>
                 <div className="relative aspect-square rounded-lg overflow-hidden border">
-                  <img
-                    src={pending.sontaHead.profileImageUrl}
+                  <Image
+                    src={getImageUrl(pending.sontaHead.profileImageUrl)}
                     alt="Profile"
                     className="w-full h-full object-cover"
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Captured Photo</Label>
                 <div className="relative aspect-square rounded-lg overflow-hidden border">
-                  <img
-                    src={pending.capturedImageUrl}
+                  <Image
+                    src={getImageUrl(pending.capturedImageUrl)}
                     alt="Captured"
                     className="w-full h-full object-cover"
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   />
                 </div>
               </div>
@@ -159,7 +145,9 @@ export function PendingVerificationModal({
 
             {/* Meeting Info */}
             <div className="p-3 bg-muted rounded-lg text-sm">
-              <p className="text-muted-foreground">Meeting: {pending.meeting.title}</p>
+              <p className="text-muted-foreground">
+                Meeting: {pending.meeting.title}
+              </p>
               <p className="text-muted-foreground">
                 Submitted: {new Date(pending.createdAt).toLocaleString()}
               </p>
@@ -210,7 +198,9 @@ export function PendingVerificationModal({
           </div>
         ) : (
           <div className="flex items-center justify-center py-12">
-            <p className="text-muted-foreground">No verification data available</p>
+            <p className="text-muted-foreground">
+              No verification data available
+            </p>
           </div>
         )}
       </DialogContent>

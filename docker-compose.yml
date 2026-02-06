@@ -12,7 +12,7 @@ services:
       - '5433:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./api/backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U sonta -d sonta_attendance']
       interval: 10s
@@ -34,7 +34,7 @@ services:
 
   face-service:
     build:
-      context: ./face-service
+      context: ./api/face-service
       dockerfile: Dockerfile
     container_name: sonta-face-service
     ports:
@@ -53,13 +53,13 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: ./api/backend
       dockerfile: Dockerfile
     container_name: sonta-backend
     ports:
       - '3000:3000'
     env_file:
-      - ./backend/.env
+      - ./api/backend/.env
     environment:
       - NODE_ENV=development
       - DATABASE_HOST=postgres
@@ -75,8 +75,8 @@ services:
       face-service:
         condition: service_healthy
     volumes:
-      - ./backend/models:/app/models
-      - ./backend/uploads:/app/uploads
+      - ./api/backend/models:/app/models
+      - ./api/backend/uploads:/app/uploads
     restart: unless-stopped
 
   web:

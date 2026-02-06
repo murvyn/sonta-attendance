@@ -8,6 +8,7 @@ export interface AttendanceRecord {
   sontaHead: {
     id: string;
     name: string;
+    sontaName?: string;
     phone: string;
     profileImageUrl: string;
   };
@@ -31,6 +32,7 @@ export interface PendingVerificationRecord {
   sontaHead: {
     id: string;
     name: string;
+    sontaName?: string;
     phone: string;
     profileImageUrl: string;
   };
@@ -44,6 +46,7 @@ export interface MeetingAttendanceData {
   notCheckedIn: {
     id: string;
     name: string;
+    sontaName?: string;
     phone: string;
     profileImageUrl: string;
   }[];
@@ -73,12 +76,14 @@ export interface CheckInResult {
   facialConfidenceScore?: number;
 }
 
+import { MeetingStatus } from './meeting';
+
 export interface QrValidationForCheckIn {
   valid: boolean;
   meeting?: {
     id: string;
     title: string;
-    status: string;
+    status: MeetingStatus;
     locationName: string;
     locationLatitude: number;
     locationLongitude: number;

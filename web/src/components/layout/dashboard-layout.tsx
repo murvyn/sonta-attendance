@@ -16,14 +16,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <AppSidebar />
         <SidebarInset>
           <SiteHeader />
-          {/* Main Content Area with Background Pattern */}
+          {/* Main Content Area */}
           <main className="relative flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 scrollbar-thin">
-            {/* Subtle Background Pattern */}
-            <div className="fixed inset-0 bg-dots opacity-30 pointer-events-none" />
-            <div className="fixed top-0 right-0 w-1/2 h-1/2 bg-gradient-radial pointer-events-none" />
-
             {/* Content with Fade-in Animation */}
-            <div className="relative z-10 animate-fade-in">
+            <div className="animate-fade-in">
               {children}
             </div>
           </main>
