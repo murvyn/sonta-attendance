@@ -75,6 +75,12 @@ RUN chmod +x ./face-service/start.sh
 # Install Python dependencies (using --break-system-packages for Docker container)
 RUN pip3 install --no-cache-dir --break-system-packages -r ./face-service/requirements.txt
 
+# Pre-download InsightFace model during build (avoids runtime download + memory spike)
+# Default: buffalo_sc (~50MB, low memory). Set FACE_MODEL=buffalo_l for higher accuracy.
+ARG FACE_MODEL=buffalo_sc
+ENV FACE_MODEL=${FACE_MODEL}
+RUN python3 ./face-service/download_model.py
+
 # =============================================================================
 # Configure Supervisor
 # =============================================================================

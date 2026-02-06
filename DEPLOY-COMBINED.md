@@ -55,9 +55,14 @@ docker build -t sonta-combined ./api
 ```
 
 **Expected**:
-- Multi-stage build completes
-- Image size: ~2.5GB (Node + Python + InsightFace)
+- Multi-stage build completes (model pre-downloaded during build)
+- Image size: ~1.5GB (Node + Python + InsightFace buffalo_sc)
 - Build time: 5-10 minutes (first time)
+
+**For higher accuracy** (requires 4GB+ RAM):
+```bash
+docker build --build-arg FACE_MODEL=buffalo_l -t sonta-combined ./api
+```
 
 ### 2. Run Locally
 
@@ -88,15 +93,14 @@ Watch for these logs in order:
 ```
 ✅ Starting supervisord...
 ✅ [face-service] Starting face-service on localhost:8000 (private)
-✅ [face-service] Loading InsightFace Buffalo_L model...
+✅ [face-service] Loading InsightFace buffalo_sc model...
 ✅ [face-service] Model loaded successfully
 ✅ [backend] Backend starting on port 3000...
-✅ [backend] Face service is ready (model: buffalo_l)
+✅ [backend] Face service is ready (model: buffalo_sc)
 ✅ [backend] Backend listening on port 3000
 ```
 
-**First startup**: 60-90 seconds (downloads Buffalo_L model ~400MB)
-**Subsequent startups**: 10-15 seconds (model cached)
+**Startup time**: 10-15 seconds (model pre-downloaded during build)
 
 ### 4. Test Face-Service is NOT Exposed
 
@@ -107,7 +111,7 @@ curl http://localhost:8000/health
 
 # From inside container (should SUCCEED)
 docker exec <container_id> curl http://localhost:8000/health
-# Expected: {"status":"healthy","model":"buffalo_l","model_loaded":true}
+# Expected: {"status":"healthy","model":"buffalo_sc","model_loaded":true}
 ```
 
 ### 5. Test Backend is Exposed
@@ -157,11 +161,11 @@ git push origin master
    | **Docker Build Context Directory** | `api` |
 
 5. **Instance Type**: Select based on needs
-   - **Starter** ($7/month): 512MB RAM ❌ (too little for InsightFace)
-   - **Standard** ($25/month): 2GB RAM ⚠️ (minimum viable)
-   - **Pro** ($85/month): 4GB RAM ✅ (recommended)
+   - **Starter** ($7/month): 512MB RAM ❌ (too little)
+   - **Standard** ($25/month): 2GB RAM ✅ (works with buffalo_sc model)
+   - **Pro** ($85/month): 4GB RAM ✅ (required for buffalo_l model)
 
-   **Note**: InsightFace model requires ~2GB RAM. Choose Standard minimum, Pro recommended.
+   **Note**: Default `buffalo_sc` model uses ~1-1.2GB total RAM. Standard plan works. For `buffalo_l` (higher accuracy), use Pro plan.
 
 ### Step 3: Configure Environment Variables
 
@@ -205,7 +209,10 @@ FRONTEND_URL=https://your-frontend.vercel.app
 ```bash
 PORT=3000
 NODE_ENV=production
+FACE_MODEL=buffalo_sc
 ```
+
+**Note**: Set `FACE_MODEL=buffalo_l` only if on Pro plan (4GB+ RAM).
 
 #### Super Admin
 ```bash
@@ -237,7 +244,7 @@ In Render service settings:
    - Run health checks
 
 **Expected deployment time**:
-- **First deploy**: 10-15 minutes (build + model download)
+- **First deploy**: 10-15 minutes (build with model pre-download)
 - **Subsequent deploys**: 5-10 minutes (cached layers)
 
 ### Step 6: Monitor Logs
@@ -248,9 +255,9 @@ Watch Render logs for:
 ✅ Building...
 ✅ Successfully built image
 ✅ Starting container...
-✅ [face-service] Loading InsightFace Buffalo_L model...
+✅ [face-service] Loading InsightFace buffalo_sc model...
 ✅ [face-service] Model loaded successfully
-✅ [backend] Face service is ready (model: buffalo_l)
+✅ [backend] Face service is ready (model: buffalo_sc)
 ✅ [backend] Backend listening on port 3000
 ✅ Health check passed
 ✅ Service is live
@@ -313,22 +320,11 @@ In Render: **Root Directory** = `api` and **Docker Build Context Directory** = `
 
 **Cause**: InsightFace model + backend exceeds available RAM
 
-**Fix**: Upgrade to Pro instance (4GB RAM) or optimize:
-```bash
-# In supervisord.conf, add memory limits
-[program:face-service]
-environment=OMP_NUM_THREADS="1"
-```
-
-### Model Download Timeout
-
-**Symptoms**: "Failed to download buffalo_l model"
-
-**Cause**: Network timeout during model download (~400MB)
-
 **Fix**:
-1. Increase health check start period in Dockerfile
-2. Or pre-cache model in Docker image (advanced)
+1. Ensure you're using `buffalo_sc` (default) — needs ~1-1.2GB total
+2. Upgrade to Standard plan ($25/month, 2GB RAM) minimum
+3. If using `buffalo_l`, upgrade to Pro plan ($85/month, 4GB RAM)
+4. Add thread limit: set `OMP_NUM_THREADS=1` in environment variables
 
 ### Health Check Failing
 
@@ -345,24 +341,23 @@ environment=OMP_NUM_THREADS="1"
 
 ## Resource Requirements
 
-### Minimum (Not Recommended)
-- **RAM**: 2GB
+### buffalo_sc (Default — Recommended)
+- **RAM**: 1-1.2GB total (Node ~300MB + Python ~700MB)
 - **CPU**: 1 core
 - **Disk**: 10GB
-- **Instance**: Render Standard ($25/month)
-- **Status**: ⚠️ May run out of memory
+- **Instance**: Render Standard ($25/month) ✅
+- **Accuracy**: Good for most use cases
 
-### Recommended (Production)
-- **RAM**: 4GB
+### buffalo_l (High Accuracy)
+- **RAM**: 2-4GB total (Node ~500MB + Python ~1.5-2GB)
 - **CPU**: 2 cores
 - **Disk**: 20GB
-- **Instance**: Render Pro ($85/month)
-- **Status**: ✅ Stable performance
+- **Instance**: Render Pro ($85/month) ✅
+- **Accuracy**: Best accuracy, recommended if budget allows
 
 ### Performance Characteristics
-- **First startup**: 60-90 seconds (model download)
-- **Subsequent startups**: 10-15 seconds (model cached)
-- **Face detection**: ~100-200ms per image
+- **Startup time**: 10-15 seconds (model pre-downloaded in image)
+- **Face detection**: ~100-200ms per image (buffalo_sc), ~150-300ms (buffalo_l)
 - **Embedding extraction**: ~150-300ms per image
 - **Check-in flow**: ~500-800ms total
 

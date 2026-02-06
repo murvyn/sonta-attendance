@@ -24,19 +24,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize InsightFace model (Buffalo_L for best accuracy)
+# Use buffalo_sc (small/compact) for lower memory usage on constrained environments
+# buffalo_l (~400MB, ~1.5GB RAM) vs buffalo_sc (~50MB, ~500MB RAM)
+# Set FACE_MODEL=buffalo_l for higher accuracy if you have 4GB+ RAM
+import os
+FACE_MODEL = os.environ.get('FACE_MODEL', 'buffalo_sc')
+
 face_app = None
 
 @app.on_event("startup")
 async def startup_event():
     global face_app
-    logger.info("Loading InsightFace Buffalo_L model...")
+    logger.info(f"Loading InsightFace {FACE_MODEL} model...")
     face_app = FaceAnalysis(
-        name='buffalo_l',
-        providers=['CPUExecutionProvider']  # Use 'CUDAExecutionProvider' if GPU available
+        name=FACE_MODEL,
+        providers=['CPUExecutionProvider']
     )
-    face_app.prepare(ctx_id=0, det_size=(640, 640))
-    logger.info("InsightFace model loaded successfully!")
+    # Use 320x320 detection size for buffalo_sc to save memory, 640x640 for buffalo_l
+    det_size = (640, 640) if FACE_MODEL == 'buffalo_l' else (320, 320)
+    face_app.prepare(ctx_id=0, det_size=det_size)
+    logger.info(f"InsightFace {FACE_MODEL} model loaded successfully!")
 
 def load_image_from_upload(file: UploadFile) -> np.ndarray:
     """Load image from upload and convert to BGR format for OpenCV"""
@@ -55,7 +62,7 @@ async def root():
 async def health():
     return {
         "status": "healthy",
-        "model": "buffalo_l",
+        "model": FACE_MODEL,
         "model_loaded": face_app is not None
     }
 
