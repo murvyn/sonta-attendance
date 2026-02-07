@@ -44,6 +44,7 @@ export function LocationPicker({
   onChange,
 }: LocationPickerProps) {
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [isAutocompleteFocused, setIsAutocompleteFocused] = useState(false);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -52,6 +53,7 @@ export function LocationPicker({
   });
 
   const handleMapClick = useCallback((e: google.maps.MapMouseEvent) => {
+    if (isAutocompleteFocused) return;
     if (e.latLng) {
       onChange({
         latitude: e.latLng.lat(),
@@ -61,7 +63,7 @@ export function LocationPicker({
         locationAddress,
       });
     }
-  }, [radius, locationName, locationAddress, onChange]);
+  }, [isAutocompleteFocused, radius, locationName, locationAddress, onChange]);
 
   const handlePlaceChanged = () => {
     if (autocompleteRef.current) {
@@ -77,6 +79,7 @@ export function LocationPicker({
         setSearchError(null);
       }
     }
+    setIsAutocompleteFocused(false);
   };
 
   const handleUseCurrentLocation = () => {
@@ -122,7 +125,7 @@ export function LocationPicker({
   return (
     <div className="space-y-4">
       {/* Search with Google Places Autocomplete */}
-      <div className="flex gap-2">
+      <div className="relative z-50 flex gap-2">
         <div className="flex-1">
           <Autocomplete
             onLoad={(autocomplete) => {
@@ -133,6 +136,8 @@ export function LocationPicker({
             <Input
               placeholder="Search for a location..."
               className="w-full"
+              onFocus={() => setIsAutocompleteFocused(true)}
+              onBlur={() => setTimeout(() => setIsAutocompleteFocused(false), 300)}
             />
           </Autocomplete>
         </div>
