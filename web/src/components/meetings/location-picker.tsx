@@ -46,6 +46,8 @@ export function LocationPicker({
   const [searchError, setSearchError] = useState<string | null>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
+  console.log(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY)
+
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     libraries,
