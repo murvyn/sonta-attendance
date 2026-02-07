@@ -251,11 +251,14 @@ export class SontaHeadsService {
       // Cloudinary public_id
       await this.cloudinaryService.deleteImage(imagePathOrPublicId);
     } else {
-      // Local file path
+      // Local file path - ignore ENOENT errors (file might not exist anymore)
       try {
         await fs.unlink(imagePathOrPublicId);
-      } catch (error) {
-        console.error('Failed to delete local image file:', error);
+      } catch (error: any) {
+        if (error.code !== 'ENOENT') {
+          console.error('Failed to delete local image file:', error);
+        }
+        // Silently ignore ENOENT (file not found) - expected when migrating to Cloudinary
       }
     }
   }

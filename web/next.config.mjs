@@ -23,6 +23,11 @@ const nextConfig = {
         hostname: '*.devtunnels.ms',
         pathname: '/uploads/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/droeaaqpq/**',
+      },
     ],
   },
 };

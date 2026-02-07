@@ -7,7 +7,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 
 import { databaseConfig, jwtConfig, emailConfig } from './config';
 import cloudinaryConfig from './config/cloudinary.config';
-import { CloudinaryService } from './services/cloudinary.service';
+import { CloudinaryModule } from './services/cloudinary.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { SontaHeadsModule } from './modules/sonta-heads/sonta-heads.module';
@@ -65,6 +65,7 @@ import { MagicLinkToken } from './modules/auth/entities';
         limit: 100,
       },
     ]),
+    CloudinaryModule,
     AuthModule,
     AdminModule,
     SontaHeadsModule,
@@ -79,7 +80,6 @@ import { MagicLinkToken } from './modules/auth/entities';
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
-    CloudinaryService,
   ],
 })
 export class AppModule {}
