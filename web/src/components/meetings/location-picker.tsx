@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
-import { GoogleMap, Marker, Circle, Autocomplete, useJsApiLoader } from '@react-google-maps/api';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { GoogleMap, Marker, Circle, useJsApiLoader } from '@react-google-maps/api';
 import { MapPin, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -44,7 +44,8 @@ export function LocationPicker({
   onChange,
 }: LocationPickerProps) {
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [isAutocompleteFocused, setIsAutocompleteFocused] = useState(false);
+  const [isAutocompleteSelecting, setIsAutocompleteSelecting] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -52,8 +53,59 @@ export function LocationPicker({
     libraries,
   });
 
+  // Attach Google Places Autocomplete directly to the input element
+  useEffect(() => {
+    if (!isLoaded || !inputRef.current || autocompleteRef.current) return;
+
+    const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
+      fields: ['geometry', 'name', 'formatted_address'],
+    });
+
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+      if (place.geometry?.location) {
+        setIsAutocompleteSelecting(true);
+        onChange({
+          latitude: place.geometry.location.lat(),
+          longitude: place.geometry.location.lng(),
+          radius,
+          locationName: place.name || place.formatted_address?.split(',')[0] || locationName,
+          locationAddress: place.formatted_address || locationAddress,
+        });
+        setSearchError(null);
+        setTimeout(() => setIsAutocompleteSelecting(false), 300);
+      }
+    });
+
+    autocompleteRef.current = autocomplete;
+  }, [isLoaded]); // Only run once when maps loads
+
+  // Update the autocomplete callback refs when props change
+  useEffect(() => {
+    if (!autocompleteRef.current) return;
+
+    google.maps.event.clearListeners(autocompleteRef.current, 'place_changed');
+    autocompleteRef.current.addListener('place_changed', () => {
+      const place = autocompleteRef.current!.getPlace();
+      if (place.geometry?.location) {
+        setIsAutocompleteSelecting(true);
+        onChange({
+          latitude: place.geometry.location.lat(),
+          longitude: place.geometry.location.lng(),
+          radius,
+          locationName: place.name || place.formatted_address?.split(',')[0] || locationName,
+          locationAddress: place.formatted_address || locationAddress,
+        });
+        setSearchError(null);
+        setTimeout(() => setIsAutocompleteSelecting(false), 300);
+      }
+    });
+  }, [radius, locationName, locationAddress, onChange]);
+
   const handleMapClick = useCallback((e: google.maps.MapMouseEvent) => {
-    if (isAutocompleteFocused) return;
+    if (isAutocompleteSelecting) {
+      return;
+    }
     if (e.latLng) {
       onChange({
         latitude: e.latLng.lat(),
@@ -63,24 +115,7 @@ export function LocationPicker({
         locationAddress,
       });
     }
-  }, [isAutocompleteFocused, radius, locationName, locationAddress, onChange]);
-
-  const handlePlaceChanged = () => {
-    if (autocompleteRef.current) {
-      const place = autocompleteRef.current.getPlace();
-      if (place.geometry?.location) {
-        onChange({
-          latitude: place.geometry.location.lat(),
-          longitude: place.geometry.location.lng(),
-          radius,
-          locationName: place.name || place.formatted_address?.split(',')[0] || locationName,
-          locationAddress: place.formatted_address || locationAddress,
-        });
-        setSearchError(null);
-      }
-    }
-    setIsAutocompleteFocused(false);
-  };
+  }, [radius, locationName, locationAddress, onChange, isAutocompleteSelecting]);
 
   const handleUseCurrentLocation = () => {
     if (navigator.geolocation) {
@@ -125,21 +160,14 @@ export function LocationPicker({
   return (
     <div className="space-y-4">
       {/* Search with Google Places Autocomplete */}
-      <div className="relative z-50 flex gap-2">
+      <div className="flex gap-2">
         <div className="flex-1">
-          <Autocomplete
-            onLoad={(autocomplete) => {
-              autocompleteRef.current = autocomplete;
-            }}
-            onPlaceChanged={handlePlaceChanged}
-          >
-            <Input
-              placeholder="Search for a location..."
-              className="w-full"
-              onFocus={() => setIsAutocompleteFocused(true)}
-              onBlur={() => setTimeout(() => setIsAutocompleteFocused(false), 300)}
-            />
-          </Autocomplete>
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="Search for a location..."
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          />
         </div>
         <Button type="button" variant="outline" onClick={handleUseCurrentLocation}>
           <MapPin className="h-4 w-4" />

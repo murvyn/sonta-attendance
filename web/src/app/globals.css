@@ -698,3 +698,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Google Places Autocomplete dropdown - must sit above map */
+.pac-container {
+  z-index: 9999 !important;
+  pointer-events: auto !important;
+}
+
+.pac-item {
+  cursor: pointer;
+}
