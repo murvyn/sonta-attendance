@@ -14,6 +14,7 @@ import * as path from 'path';
 import { Meeting, MeetingStatus, QrCode, QrExpiryStrategy } from './entities';
 import { CreateMeetingDto, UpdateMeetingDto, QueryMeetingDto } from './dto';
 import { AttendanceGateway } from '../../gateways/attendance.gateway';
+import { CloudinaryService } from '../../services/cloudinary.service';
 
 @Injectable()
 export class MeetingsService {
@@ -23,6 +24,7 @@ export class MeetingsService {
     @InjectRepository(QrCode)
     private qrCodeRepository: Repository<QrCode>,
     private attendanceGateway: AttendanceGateway,
+    private cloudinaryService: CloudinaryService,
   ) {}
 
   async create(dto: CreateMeetingDto, adminId: string): Promise<Meeting> {
@@ -153,10 +155,16 @@ export class MeetingsService {
 
     for (const qr of qrCodes) {
       if (qr.qrImagePath) {
-        try {
-          await fs.unlink(qr.qrImagePath);
-        } catch {
-          // Ignore file not found errors
+        if (qr.qrImagePath.startsWith('sonta-attendance/')) {
+          // Cloudinary public_id
+          await this.cloudinaryService.deleteImage(qr.qrImagePath);
+        } else {
+          // Local file path
+          try {
+            await fs.unlink(qr.qrImagePath);
+          } catch {
+            // Ignore file not found errors
+          }
         }
       }
     }
@@ -395,29 +403,47 @@ export class MeetingsService {
     // Generate QR code URL (check-in page URL)
     const checkInUrl = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/check-in/${qrToken}`;
 
-    // Ensure uploads directory exists
-    const uploadsDir = path.join(process.cwd(), 'uploads', 'qr-codes');
-    await fs.mkdir(uploadsDir, { recursive: true });
-
-    // Generate QR code image
-    const qrFileName = `${meeting.id}-${Date.now()}.png`;
-    const qrFilePath = path.join(uploadsDir, qrFileName);
-
-    await QRCode.toFile(qrFilePath, checkInUrl, {
+    // Generate QR code to buffer
+    const qrBuffer = await QRCode.toBuffer(checkInUrl, {
       width: 400,
       margin: 2,
       color: {
         dark: '#000000',
         light: '#ffffff',
       },
+      type: 'png',
     });
+
+    let qrImagePath: string;
+    let qrImageUrl: string;
+
+    if (this.cloudinaryService.isEnabled()) {
+      // Upload to Cloudinary
+      const result = await this.cloudinaryService.uploadImage(qrBuffer, {
+        folder: 'sonta-attendance/qr-codes',
+        publicId: `qr-${meeting.id}-${Date.now()}`,
+        format: 'png',
+      });
+
+      qrImagePath = result.publicId;
+      qrImageUrl = result.secureUrl;
+    } else {
+      // Fallback to local storage
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'qr-codes');
+      await fs.mkdir(uploadsDir, { recursive: true });
+      const qrFileName = `${meeting.id}-${Date.now()}.png`;
+      const qrFilePath = path.join(uploadsDir, qrFileName);
+      await fs.writeFile(qrFilePath, qrBuffer);
+      qrImagePath = qrFilePath;
+      qrImageUrl = `/uploads/qr-codes/${qrFileName}`;
+    }
 
     // Create QR code record
     const qrCode = this.qrCodeRepository.create({
       meetingId: meeting.id,
       qrToken,
-      qrImagePath: qrFilePath,
-      qrImageUrl: `/uploads/qr-codes/${qrFileName}`,
+      qrImagePath,
+      qrImageUrl,
       maxScans: meeting.qrExpiryStrategy === QrExpiryStrategy.MAX_SCANS ? meeting.qrMaxScans : undefined,
       isActive: true,
     });

@@ -21,6 +21,7 @@ import { VerifyLocationDto, CheckInDto, ManualCheckInDto, ReviewPendingDto } fro
 import { FacialRecognitionService } from '../../services/facial-recognition.service';
 import { EncryptionService } from '../../services/encryption.service';
 import { AttendanceGateway } from '../../gateways/attendance.gateway';
+import { CloudinaryService } from '../../services/cloudinary.service';
 
 // Confidence thresholds
 const AUTO_APPROVE_THRESHOLD = 95;
@@ -54,6 +55,7 @@ export class AttendanceService {
     private attendanceGateway: AttendanceGateway,
     private facialRecognitionService: FacialRecognitionService,
     private encryptionService: EncryptionService,
+    private cloudinaryService: CloudinaryService,
   ) {}
 
   async verifyLocation(dto: VerifyLocationDto): Promise<{ valid: boolean; distance: number }> {
@@ -135,23 +137,38 @@ export class AttendanceService {
     // Increment QR scan count
     await this.meetingsService.incrementQrScanCount(dto.qrToken);
 
-    // Save captured image
-    const uploadsDir = path.join(process.cwd(), 'uploads', 'check-in-photos');
-    await fs.mkdir(uploadsDir, { recursive: true });
-
-    const imageFileName = `${meeting.id}-${Date.now()}.jpg`;
-    const imagePath = path.join(uploadsDir, imageFileName);
-
-    await sharp(capturedImage.buffer)
+    // Process image with Sharp (for facial recognition)
+    const processedBuffer = await sharp(capturedImage.buffer)
       .rotate() // Auto-rotate based on EXIF orientation metadata
       .resize(400, 400, { fit: 'cover' })
       .jpeg({ quality: 85 })
-      .toFile(imagePath);
+      .toBuffer();
 
-    const capturedImageUrl = `/uploads/check-in-photos/${imageFileName}`;
+    let imagePath: string;
+    let capturedImageUrl: string;
 
-    // Perform facial recognition (simulated for MVP)
-    const recognitionResult = await this.performFacialRecognition(capturedImage.buffer);
+    if (this.cloudinaryService.isEnabled()) {
+      // Upload to Cloudinary
+      const result = await this.cloudinaryService.uploadImage(processedBuffer, {
+        folder: 'sonta-attendance/check-in-photos',
+        publicId: `checkin-${meeting.id}-${Date.now()}`,
+        format: 'jpg',
+      });
+
+      imagePath = result.publicId;
+      capturedImageUrl = result.secureUrl;
+    } else {
+      // Fallback to local storage
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'check-in-photos');
+      await fs.mkdir(uploadsDir, { recursive: true });
+      const imageFileName = `${meeting.id}-${Date.now()}.jpg`;
+      imagePath = path.join(uploadsDir, imageFileName);
+      await fs.writeFile(imagePath, processedBuffer);
+      capturedImageUrl = `/uploads/check-in-photos/${imageFileName}`;
+    }
+
+    // Perform facial recognition using the processed buffer
+    const recognitionResult = await this.performFacialRecognition(processedBuffer);
 
     if (!recognitionResult.matchedSontaHead) {
       // Log failed attempt

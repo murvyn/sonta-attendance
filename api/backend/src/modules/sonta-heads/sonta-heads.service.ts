@@ -13,6 +13,7 @@ import { SontaHead, SontaHeadStatus } from './entities/sonta-head.entity';
 import { CreateSontaHeadDto, UpdateSontaHeadDto, QuerySontaHeadDto } from './dto';
 import { FacialRecognitionService } from '../../services/facial-recognition.service';
 import { EncryptionService } from '../../services/encryption.service';
+import { CloudinaryService } from '../../services/cloudinary.service';
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -31,8 +32,12 @@ export class SontaHeadsService {
     private readonly sontaHeadRepository: Repository<SontaHead>,
     private readonly facialRecognitionService: FacialRecognitionService,
     private readonly encryptionService: EncryptionService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {
-    this.ensureUploadDir();
+    // Only create upload dir if Cloudinary is disabled
+    if (!this.cloudinaryService.isEnabled()) {
+      this.ensureUploadDir();
+    }
   }
 
   private async ensureUploadDir() {
@@ -203,28 +208,55 @@ export class SontaHeadsService {
   private async processAndSaveImage(
     file: Express.Multer.File,
   ): Promise<{ imagePath: string; imageUrl: string }> {
-    const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
-    const imagePath = path.join(this.uploadDir, filename);
-
     // Process image with Sharp: auto-rotate based on EXIF, resize, convert to JPEG, optimize
-    await sharp(file.buffer)
+    const processedBuffer = await sharp(file.buffer)
       .rotate() // Auto-rotate based on EXIF orientation metadata
       .resize(400, 400, {
         fit: 'cover',
         position: 'centre',
       })
       .jpeg({ quality: 85 })
-      .toFile(imagePath);
+      .toBuffer();
 
-    const imageUrl = `/uploads/profiles/${filename}`;
-    return { imagePath, imageUrl };
+    if (this.cloudinaryService.isEnabled()) {
+      // Upload to Cloudinary
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(7);
+
+      const result = await this.cloudinaryService.uploadImage(processedBuffer, {
+        folder: 'sonta-attendance/profiles',
+        publicId: `profile-${timestamp}-${randomStr}`,
+        format: 'jpg',
+      });
+
+      return {
+        imagePath: result.publicId, // Store public_id for deletion
+        imageUrl: result.secureUrl, // Full Cloudinary URL
+      };
+    } else {
+      // Fallback to local storage
+      const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+      const imagePath = path.join(this.uploadDir, filename);
+      await fs.writeFile(imagePath, processedBuffer);
+      const imageUrl = `/uploads/profiles/${filename}`;
+      return { imagePath, imageUrl };
+    }
   }
 
-  private async deleteImageFile(imagePath: string): Promise<void> {
-    try {
-      await fs.unlink(imagePath);
-    } catch (error) {
-      console.error('Failed to delete image file:', error);
+  private async deleteImageFile(imagePathOrPublicId: string): Promise<void> {
+    if (!imagePathOrPublicId) return;
+
+    // Determine if it's a Cloudinary public_id or local file path
+    if (imagePathOrPublicId.startsWith('sonta-attendance/')) {
+      // Cloudinary public_id
+      await this.cloudinaryService.deleteImage(imagePathOrPublicId);
+    } else {
+      // Local file path
+      try {
+        await fs.unlink(imagePathOrPublicId);
+      } catch (error) {
+        console.error('Failed to delete local image file:', error);
+      }
     }
   }
 

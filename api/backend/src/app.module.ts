@@ -2,12 +2,12 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { ServeStaticModule } from '@nestjs/serve-static';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import { join } from 'path';
 
 import { databaseConfig, jwtConfig, emailConfig } from './config';
+import cloudinaryConfig from './config/cloudinary.config';
+import { CloudinaryService } from './services/cloudinary.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { SontaHeadsModule } from './modules/sonta-heads/sonta-heads.module';
@@ -30,7 +30,7 @@ import { MagicLinkToken } from './modules/auth/entities';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [databaseConfig, jwtConfig, emailConfig],
+      load: [databaseConfig, jwtConfig, emailConfig, cloudinaryConfig],
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -65,10 +65,6 @@ import { MagicLinkToken } from './modules/auth/entities';
         limit: 100,
       },
     ]),
-    ServeStaticModule.forRoot({
-      rootPath: join(process.cwd(), 'uploads'),
-      serveRoot: '/uploads',
-    }),
     AuthModule,
     AdminModule,
     SontaHeadsModule,
@@ -83,6 +79,7 @@ import { MagicLinkToken } from './modules/auth/entities';
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
+    CloudinaryService,
   ],
 })
 export class AppModule {}
